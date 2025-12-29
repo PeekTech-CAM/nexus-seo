@@ -7,3 +7,5 @@ stripe
 plotly
 pandas
 fpdf
+streamlit-extras
+streamlit-lottie

@@ -7,8 +7,9 @@ import time
 # ==========================================
 # 🛑 CONFIGURACIÓN DE LLAVES (Hardcoded para tu uso privado)
 # ==========================================
-KEY_FIRECRAWL = "TU_LLAVE_FC_AQUI" 
-KEY_GOOGLE = "TU_LLAVE_AIZA_AQUI"
+# Busca la zona de llaves y cámbiala por esto:
+KEY_FIRECRAWL = st.secrets["FIRE_KEY"]
+KEY_GOOGLE = st.secrets["GEMINI_KEY"]
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="NEXUS SEO Agent", page_icon="⚡", layout="wide")

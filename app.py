@@ -15,7 +15,6 @@ GEMINI_KEY = st.secrets["GEMINI_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --- 2. SELLABLE PLANS LOGIC ---
-# People buy results, not tools. Gating features by ROI
 PLANS = {
     "Demo": {"depth": 2500, "pdf": False, "label": "Free Demo", "credits": 1},
     "Starter": {"depth": 5000, "pdf": True, "label": "Starter (€29/mo)", "credits": 5},
@@ -27,7 +26,7 @@ st.set_page_config(page_title="NEXUS Pro | Strategic SEO", page_icon="⚡", layo
 
 # --- 3. DATABASE HELPERS ---
 def get_user_profile(user_id):
-    # Queries the table you created in the SQL Editor
+    # Queries the table you just created in Supabase
     res = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
     return res.data
 
@@ -41,26 +40,24 @@ def run_strategic_audit(url, lang, tier):
     fc = Firecrawl(api_key=FIRE_KEY)
     gg = genai.Client(api_key=GEMINI_KEY)
 
-    with st.status(f"⚡ NEXUS Intelligence analyzing {url}...") as status:
+    with st.status(f"⚡ Analyzing {url}...") as status:
         scrape = fc.scrape(url)
         content = scrape.markdown if hasattr(scrape, 'markdown') else str(scrape)
         
-        # This prompt delivers the "Clarity in Action" Denise mentioned
+        # Responding to Denise's comment: "Clarity in Action"
         prompt = f"""
         Act as a Senior SEO Strategist. Analyze {url} in {lang}.
         Tier: {tier}. Depth: {config['depth']} chars.
         
-        Structure your response for ROI:
+        Structure for ROI:
         1. STRATEGIC SCORE: [0-100]
         2. PRIORITIZED ACTIONS:
-           - [HIGH IMPACT] (Immediate fixes for revenue/ROI)
-           - [MEDIUM IMPACT] (Structural/Content improvements)
-           - [LOW IMPACT] (Long-term growth)
-        3. COMPETITOR ANALYSIS.
+           - [HIGH IMPACT] (Fix immediately for Revenue/ROI)
+           - [MEDIUM IMPACT] (Structural improvements)
+           - [LOW IMPACT] (Optimization)
         
         Content: {content[:config['depth']]}
         """
-        
         res = gg.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
         return res.text
 
@@ -68,16 +65,11 @@ def run_strategic_audit(url, lang, tier):
 def generate_pdf(text, url, tier, agency_logo=None):
     pdf = FPDF()
     pdf.add_page()
-    is_agency = PLANS[tier].get("white_label", False)
+    is_agency = (tier == "Agency")
     
-    # White-Label Branding
     pdf.set_font("Arial", 'B', 16)
     title = "NEXUS STRATEGIC AUDIT" if not is_agency else "PROFESSIONAL SEO AUDIT"
     pdf.cell(0, 10, title, ln=True, align='C')
-    
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 10, f"Analysis for: {url}", ln=True, align='C')
-    pdf.ln(10)
     
     pdf.set_font("Arial", size=11)
     pdf.multi_cell(0, 7, text.replace("**", "").replace("#", ""))
@@ -87,7 +79,7 @@ def generate_pdf(text, url, tier, agency_logo=None):
 st.sidebar.title("⚡ NEXUS Pro Portal")
 
 if "user" not in st.session_state:
-    # Login Logic
+    # Handle Login
     email = st.sidebar.text_input("Email")
     pwd = st.sidebar.text_input("Password", type="password")
     if st.sidebar.button("Login"):
@@ -97,44 +89,30 @@ if "user" not in st.session_state:
             st.rerun()
         except: st.sidebar.error("Invalid Login")
 else:
-    # Fetch data from 'profiles' table
     user_info = get_user_profile(st.session_state.user.id)
     tier = user_info['plan_tier']
     credits = user_info['credits']
     
     st.sidebar.success(f"Plan: {tier}")
-    if tier in ["Demo", "Starter"]:
+    if not PLANS[tier].get("unlimited"):
         st.sidebar.write(f"Credits: {credits}")
-        st.sidebar.markdown("[🚀 Upgrade for more](https://buy.stripe.com/your_link)") #
-    
-    # Agency White-Label Module
-    logo_file = None
-    if PLANS[tier].get("white_label"):
-        st.sidebar.divider()
-        logo_file = st.sidebar.file_uploader("Upload Agency Logo (PDF)", type=["png", "jpg"])
+        st.sidebar.markdown("[🚀 Upgrade](https://buy.stripe.com/your_link)")
 
     st.title("⚡ Strategic SEO Agent")
-    target_url = st.text_input("Enter Client URL:", placeholder="https://example.com")
-    lang = st.selectbox("Report Language:", ["English", "Español", "Arabic", "German"])
+    target_url = st.text_input("Client URL:")
+    lang = st.selectbox("Language:", ["English", "Español", "Arabic", "German"])
     
     if st.button("Generate Audit") and target_url:
-        # Credits Check
         if not PLANS[tier].get("unlimited") and credits <= 0:
-            st.error("Out of credits! Please upgrade to continue.")
+            st.error("Out of credits!")
         else:
             report = run_strategic_audit(target_url, lang, tier)
             st.markdown(report)
+            if not PLANS[tier].get("unlimited"): update_credits(st.session_state.user.id, credits)
             
-            # Deduct credits automatically
-            if not PLANS[tier].get("unlimited"):
-                update_credits(st.session_state.user.id, credits)
-            
-            # PDF Gating
             if PLANS[tier]["pdf"]:
-                pdf_file = generate_pdf(report, target_url, tier, logo_file)
-                st.download_button("📩 Download Professional PDF", pdf_file, "Audit.pdf")
-            else:
-                st.warning("🔒 Upgrade to Starter or Pro to download this prioritized report as a PDF.")
+                pdf_file = generate_pdf(report, target_url, tier)
+                st.download_button("📩 Download PDF", pdf_file, "Audit.pdf")
 
 if st.sidebar.button("Sign Out"):
     supabase.auth.sign_out()

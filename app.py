@@ -4,152 +4,148 @@ from google import genai
 from fpdf import FPDF
 import os
 
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="NEXUS Pro | Intelligence", page_icon="⚡", layout="wide")
+# --- 1. CONFIGURACIÓN DE MARCA ---
+st.set_page_config(page_title="NEXUS Pro | Global SEO Intelligence", page_icon="⚡", layout="wide")
 
-# --- 2. SEGURIDAD ---
-def verificar_password():
-    if "autenticado" not in st.session_state:
-        st.session_state["autenticado"] = False
-    if not st.session_state["autenticado"]:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.title("🔐 NEXUS Pro Access")
-            pwd = st.text_input("License Key:", type="password")
-            if st.button("Activate"):
-                if pwd == "NEXUS2025":
-                    st.session_state["autenticado"] = True
+# --- 2. GESTIÓN DE ESTADO Y ACCESO ---
+if "nivel_acceso" not in st.session_state:
+    st.session_state["nivel_acceso"] = "Demo"
+
+def login_sidebar():
+    st.sidebar.title("⚡ NEXUS Pro Panel")
+    if st.session_state["nivel_acceso"] == "Demo":
+        st.sidebar.warning("Acceso: Demo Gratuita")
+        with st.sidebar.expander("🔓 Activar Versión Pro"):
+            key = st.text_input("Introduce tu Licencia:", type="password")
+            if st.button("Validar Acceso"):
+                if key == "NEXUS2025":
+                    st.session_state["nivel_acceso"] = "Pro"
+                    st.success("¡Modo Pro Activado!")
                     st.rerun()
-                else: st.error("Invalid License")
-        return False
-    return True
+                else:
+                    st.error("Licencia inválida")
+    else:
+        st.sidebar.success("Acceso: PRO ACTIVADO ✅")
+        if st.sidebar.button("Cerrar Sesión"):
+            st.session_state["nivel_acceso"] = "Demo"
+            st.rerun()
 
-# --- 3. CARGA DE SECRETOS ---
-try:
-    KEY_FC = st.secrets["FIRE_KEY"]
-    KEY_GG = st.secrets["GEMINI_KEY"]
-except:
-    st.error("Missing API Keys in Streamlit Secrets.")
-    st.stop()
-
-# --- 4. GENERADOR DE PDF UNICODE (Powered by fpdf2) ---
-def crear_pdf(texto, url, score, lang):
+# --- 3. MOTOR DE GENERACIÓN PDF UNICODE ---
+def crear_pdf_pro(texto, url, score, lang):
     pdf = FPDF()
     pdf.add_page()
     
-    # Soporte para Árabe y Unicode
-    font_path = "Amiri-Regular.ttf"
-    if os.path.exists(font_path):
-        pdf.add_font("Amiri", "", font_path)
+    # Soporte para fuentes globales (Asegúrate de tener el archivo .ttf en GitHub)
+    font_name = "Arial"
+    if os.path.exists("Amiri-Regular.ttf"):
+        pdf.add_font("Amiri", "", "Amiri-Regular.ttf")
         font_name = "Amiri"
-    else:
-        font_name = "Arial" # Fallback
 
-    # Traducciones de Interfaz de PDF
-    labels = {
-        "Arabic": {"t": "NEXUS تقرير", "s": "النتيجة:", "u": "تحليل لـ:", "align": "R"},
-        "English": {"t": "NEXUS REPORT", "s": "Score:", "u": "Analysis for:", "align": "L"},
-        "German": {"t": "NEXUS BERICHT", "s": "Ergebnis:", "u": "Analyse für:", "align": "L"},
-        "Español": {"t": "REPORTE NEXUS", "s": "Puntuación:", "u": "Análisis para:", "align": "L"},
-        "Portugues": {"t": "RELATÓRIO NEXUS", "s": "Pontuação:", "u": "Análise para:", "align": "L"},
-        "Dutch": {"t": "NEXUS RAPPORT", "s": "Score:", "u": "Analyse voor:", "align": "L"},
-        "Italian": {"t": "RAPPORTO NEXUS", "s": "Punteggio:", "u": "Analisi per:", "align": "L"}
-    }
-    
-    cfg = labels.get(lang, labels["English"])
-    
-    # Header
+    # Encabezado Premium
     pdf.set_font(font_name, 'B', 20)
     pdf.set_text_color(255, 75, 75)
-    pdf.cell(0, 15, cfg["t"], ln=True, align=cfg["align"])
+    pdf.cell(0, 15, "NEXUS STRATEGIC AUDIT", ln=True, align='C')
     
-    # Subheader
     pdf.set_font(font_name, '', 12)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, f"{cfg['u']} {url}", ln=True, align=cfg["align"])
-    pdf.cell(0, 10, f"{cfg['s']} {score}/100", ln=True, align=cfg["align"])
+    pdf.cell(0, 10, f"Analysis for: {url}", ln=True, align='C')
+    pdf.cell(0, 10, f"SEO Health Score: {score}/100", ln=True, align='C')
     pdf.ln(10)
     
-    # Body
+    # Cuerpo del Reporte
     pdf.set_font(font_name, size=11)
-    clean_text = texto.replace("**", "").replace("#", "").replace("`", "")
+    # Limpieza de caracteres para evitar errores en el PDF
+    clean_text = texto.encode('utf-8', 'ignore').decode('utf-8').replace("**", "").replace("#", "")
     
-    # Renderizado con soporte RTL para Árabe
     align_body = 'R' if lang == "Arabic" else 'L'
     pdf.multi_cell(0, 8, clean_text, align=align_body)
     
+    pdf.set_y(-20)
+    pdf.set_font(font_name, 'I', 8)
+    pdf.cell(0, 10, "Generado por NEXUS Pro - Reporte de Consultoría Estratégica", align='C')
+    
     return bytes(pdf.output())
 
-# --- 5. EJECUCIÓN DEL AGENTE ---
-def run_nexus(url, lang):
+# --- 4. LÓGICA DEL AGENTE IA (DEMO VS PRO) ---
+def ejecutar_auditoria(url, lang, acceso):
     try:
-        fc = Firecrawl(api_key=KEY_FC)
-        gg = genai.Client(api_key=KEY_GG)
-    except: return "Connection Error", 0
+        fc = Firecrawl(api_key=st.secrets["FIRE_KEY"])
+        gg = genai.Client(api_key=st.secrets["GEMINI_KEY"])
+    except:
+        st.error("Error de configuración de API Keys.")
+        return None, 0
 
-    with st.status(f"⚡ NEXUS Pro Analyzing ({lang})...") as s:
-        try:
-            # Scrape
-            res_fc = fc.scrape(url)
-            content = res_fc.markdown if hasattr(res_fc, 'markdown') else str(res_fc)
-            
-            # AI Logic
-            prompt = f"""
-            Act as NEXUS Pro SEO Consultant. All output MUST be in {lang}.
-            Analyze: {url}
-            1. Start with 'SCORE: [0-100]'.
-            2. 3 Critical Errors, 3 H1 Ideas, 1 Copy Rewrite.
-            Context: {content[:12000]}
-            """
-            
-            # Model Fallback System
-            for model_id in ["gemini-2.0-flash-exp", "gemini-1.5-pro"]:
-                try:
-                    res_gg = gg.models.generate_content(model=model_id, contents=prompt)
-                    report = res_gg.text
-                    break
-                except: continue
-            
-            score = 65
-            if "SCORE:" in report:
-                try: score = int(report.split("SCORE:")[1].split("\n")[0].strip(" []"))
-                except: pass
-                
-            s.update(label="✅ Analysis Complete", state="complete")
-            return report, score
-        except Exception as e:
-            return f"Agent Error: {e}", 0
-
-# --- 6. UI ---
-if verificar_password():
-    st.sidebar.title("⚡ NEXUS Pro")
-    idioma = st.sidebar.selectbox("Language / Idioma", 
-        ["English", "Español", "Arabic", "German", "Portugues", "Dutch", "Italian"])
-    
-    if st.sidebar.button("Logout"):
-        st.session_state["autenticado"] = False
-        st.rerun()
-
-    st.title("⚡ NEXUS SEO Intelligence")
-    url_target = st.text_input("URL:", placeholder="https://client-website.com")
-
-    if st.button("🚀 GENERATE REPORT") and url_target:
-        report_text, score_val = run_nexus(url_target, idioma)
+    with st.status(f"⚡ NEXUS Analizando ({acceso})...") as s:
+        # 1. Scrape
+        data = fc.scrape(url)
+        content = data.markdown if hasattr(data, 'markdown') else str(data)
         
-        if score_val > 0:
-            st.balloons()
-            c1, c2 = st.columns([1, 2])
-            c1.metric("SEO Score", f"{score_val}/100")
-            c1.progress(score_val / 100)
+        # 2. Diferenciación de Potencia
+        if acceso == "Demo":
+            limit = 2500
+            prompt = f"Eres NEXUS SEO. Idioma: {lang}. Haz un resumen MUY breve de 2 puntos sobre {url}. Di que para el reporte completo necesita Pro."
+        else:
+            limit = 15000
+            prompt = f"""Actúa como Consultor SEO Pro. Idioma: {lang}. 
+            Analiza {url} con Score: [0-100], 3 errores críticos, 3 ideas de H1 y mejora de copy.
+            Contenido: {content[:limit]}"""
+
+        # 3. Llamada a IA
+        res = gg.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+        report = res.text
+        
+        # 4. Cálculo de Score
+        score = 65
+        if "SCORE:" in report:
+            try: score = int(report.split("SCORE:")[1].split("\n")[0].strip(" []"))
+            except: pass
             
-            st.markdown("---")
-            st.info(report_text)
-            
-            # Export
-            pdf_data = crear_pdf(report_text, url_target, score_val, idioma)
+        s.update(label="✅ Análisis Finalizado", state="complete")
+        return report, score
+
+# --- 5. INTERFAZ DE USUARIO ---
+login_sidebar()
+
+st.title("⚡ NEXUS SEO Intelligence")
+st.subheader("La herramienta definitiva para agencias y consultores")
+
+if st.session_state["nivel_acceso"] == "Demo":
+    st.info("💡 Estás usando la **Demo Gratuita**. Desbloquea el modo **Pro** para obtener reportes detallados, PDF descargables y soporte multi-idioma completo.")
+
+# Input Principal
+target_url = st.text_input("Introduce la URL de la web a analizar:", placeholder="https://tu-cliente.com")
+
+# Opciones Pro
+col1, col2 = st.columns(2)
+with col1:
+    idioma = st.selectbox("Idioma del Reporte", ["Español", "English", "Arabic", "German", "Portugues", "Italian", "Dutch"])
+with col2:
+    if st.session_state["nivel_acceso"] == "Pro":
+        st.write("✨ Opciones Pro activadas: Reporte Profundo + PDF")
+    else:
+        st.write("🔒 Opciones Pro bloqueadas")
+
+if st.button("🚀 INICIAR AUDITORÍA") and target_url:
+    resultado, puntuacion = ejecutar_auditoria(target_url, idioma, st.session_state["nivel_acceso"])
+    
+    if resultado:
+        st.divider()
+        c_score, c_info = st.columns([1, 2])
+        c_score.metric("SEO Score", f"{puntuacion}/100")
+        c_score.progress(puntuacion / 100)
+        
+        st.markdown("### 📝 Análisis de Resultados")
+        st.markdown(resultado)
+        
+        # Botón de Descarga SOLO para Pro
+        if st.session_state["nivel_acceso"] == "Pro":
+            st.success("Reporte Profesional generado.")
+            pdf_data = crear_pdf_pro(resultado, target_url, puntuacion, idioma)
             st.download_button(
-                label=f"📩 Download PDF ({idioma})",
+                label="📩 Descargar Auditoría PDF",
                 data=pdf_data,
-                file_name=f"NEXUS_{idioma}_{url_target.replace('https://','')}.pdf",
+                file_name=f"NEXUS_Pro_{target_url.replace('https://','')}.pdf",
                 mime="application/pdf"
             )
+        else:
+            st.warning("⚠️ La descarga de PDF y el análisis detallado están desactivados en la Demo.")

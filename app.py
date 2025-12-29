@@ -3,204 +3,146 @@ from supabase import create_client, Client
 from firecrawl import Firecrawl
 from google import genai
 from fpdf import FPDF
-import datetime
+import plotly.graph_objects as go
+import plotly.express as px
+import json
+import re
 
-# --- 1. ENTERPRISE ARCHITECTURE & SECURITY ---
-# High-level secret management to avoid GitHub exposure
+# --- 1. SECURE INITIALIZATION (Resolving 405 Error) ---
 @st.cache_resource
-def init_connections():
+def init_enterprise_engine():
     try:
-        # Crucial: Must be the API URL (https://xxx.supabase.co), not the Dashboard URL
-        supabase: Client = create_client(
-            st.secrets["SUPABASE_URL"], 
-            st.secrets["SUPABASE_KEY"]
-        )
+        # Use ONLY the API URL from Settings > API
+        supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
         firecrawl = Firecrawl(api_key=st.secrets["FIRE_KEY"])
         gemini = genai.Client(api_key=st.secrets["GEMINI_KEY"])
         return supabase, firecrawl, gemini
     except Exception as e:
-        st.error(f"Initialization Failed: Ensure TOML secrets are correctly formatted. Error: {e}")
+        st.error(f"Initialization Failed. Check API URLs in Secrets. Error: {e}")
         st.stop()
 
-supabase, firecrawl, gemini = init_connections()
+supabase, firecrawl, gemini = init_enterprise_engine()
 
-# --- 2. SAAS PRODUCT TIERS (VALUE-BASED GATING) ---
-# Designed for ROI-driven sales to businesses and agencies
+# --- 2. PROFESSIONAL SAAS TIERS ---
 PLANS = {
-    "Demo": {
-        "label": "Free Demo", 
-        "depth": 3000, 
-        "pdf": False, 
-        "credits": 1,
-        "model": "gemini-2.0-flash-exp"
-    },
-    "Starter": {
-        "label": "Starter (€29/mo)", 
-        "depth": 7000, 
-        "pdf": True, 
-        "credits": 5,
-        "model": "gemini-2.0-flash-exp"
-    },
-    "Pro": {
-        "label": "Pro (€79/mo)", 
-        "depth": 18000, 
-        "pdf": True, 
-        "unlimited": True,
-        "model": "gemini-2.0-flash-exp"
-    },
-    "Agency": {
-        "label": "Agency (€199/mo)", 
-        "depth": 25000, 
-        "pdf": True, 
-        "unlimited": True, 
-        "white_label": True,
-        "model": "gemini-2.0-pro-exp" # High-end model for enterprise reports
-    }
+    "Demo": {"depth": 3000, "label": "Free Demo", "credits": 1, "viz": True},
+    "Starter": {"depth": 7000, "label": "Starter (€29)", "credits": 5, "viz": True},
+    "Pro": {"depth": 18000, "label": "Pro (€79)", "unlimited": True, "viz": True},
+    "Agency": {"depth": 25000, "label": "Agency (€199)", "unlimited": True, "white_label": True, "viz": True}
 }
 
 st.set_page_config(page_title="NEXUS Pro | Enterprise SEO Intelligence", layout="wide")
 
-# --- 3. DATABASE OPERATIONS (USER PROFILE MANAGEMENT) ---
-def fetch_user_state(user_id):
-    # Fetches real-time tier/credits from your Supabase profiles table
-    try:
-        res = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
-        return res.data
-    except:
-        return None
-
-def process_credit_deduction(user_id, current_credits, plan):
-    # Only deducts for limited plans
-    if not PLANS[plan].get("unlimited") and current_credits > 0:
-        supabase.table("profiles").update({"credits": current_credits - 1}).eq("id", user_id).execute()
-
-# --- 4. THE PRIORITIZATION ENGINE (AI STRATEGY) ---
-def generate_strategic_audit(url, lang, tier):
-    config = PLANS[tier]
+# --- 3. DATA VISUALIZATION ENGINE (Live Analysis Charts) ---
+def render_analysis_charts(score, priorities):
+    col1, col2 = st.columns(2)
     
-    with st.status(f"⚡ NEXUS AI: Deep-Scanning {url}...") as status:
-        # Data Acquisition via Firecrawl
+    with col1:
+        # Gauge Chart for Strategic Health
+        fig_gauge = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = score,
+            title = {'text': "Strategic Health Score"},
+            gauge = {
+                'axis': {'range': [0, 100]},
+                'bar': {'color': "#ff4b4b"},
+                'steps': [
+                    {'range': [0, 50], 'color': "#333"},
+                    {'range': [50, 80], 'color': "#666"}]}))
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
+    with col2:
+        # Priority Distribution Chart
+        labels = list(priorities.keys())
+        values = list(priorities.values())
+        fig_pie = px.pie(names=labels, values=values, title="Action Priority Distribution",
+                         color_discrete_sequence=["#ff4b4b", "#888", "#333"])
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+# --- 4. THE PRIORITIZATION ENGINE (JSON Output for Charts) ---
+def execute_deep_audit(url, lang, tier):
+    config = PLANS[tier]
+    with st.status("⚡ Executing Multi-Vector Analysis...") as status:
         scrape = firecrawl.scrape(url)
-        raw_content = scrape.markdown if hasattr(scrape, 'markdown') else str(scrape)
+        raw_data = scrape.markdown if hasattr(scrape, 'markdown') else str(scrape)
         
-        # High-level Strategic Prompting for ROI
+        # Enterprise Prompt: Requests JSON for real-time charting
         prompt = f"""
-        Role: Senior SEO Strategist for Enterprise Clients.
-        Analyze: {url} in {lang}.
-        Tier: {tier} (Context Depth: {config['depth']} chars).
+        Analyze {url} in {lang}. Role: SEO Director.
+        Tier: {tier}.
         
-        Deliverable Structure:
-        1. EXECUTIVE SUMMARY & STRATEGIC SCORE (0-100)
-        2. PRIORITIZED TECHNICAL ROADMAP:
-           - [CRITICAL/HIGH] (Fix in <48hrs for immediate ROI)
-           - [MEDIUM] (Strategic structural changes)
-           - [LOW] (Long-term brand authority)
-        3. CONTENT GAP ANALYSIS
-        4. CONVERSION RATE OPTIMIZATION (CRO) SUGGESTIONS
+        YOU MUST RETURN A JSON BLOCK FIRST, then the report.
+        JSON Format:
+        {{
+          "score": 85,
+          "priorities": {{"High": 5, "Medium": 3, "Low": 8}}
+        }}
         
-        Language: {lang}. Content: {raw_content[:config['depth']]}
+        Report Structure: [ROI Summary], [Technical RoadMap], [Competitor Gap].
+        Content: {raw_data[:config['depth']]}
         """
         
-        response = gemini.models.generate_content(model=config["model"], contents=prompt)
-        return response.text
+        res = gemini.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
+        return res.text
 
-# --- 5. ENTERPRISE REPORT GENERATOR (PDF) ---
-def export_professional_report(content, url, tier, logo=None):
-    pdf = FPDF()
-    pdf.add_page()
-    is_agency = PLANS[tier].get("white_label", False)
-    
-    # White-Labeling for Agency Tier
-    pdf.set_font("Arial", 'B', 20)
-    pdf.set_text_color(40, 40, 40)
-    header = "PROFESSIONAL SEO STRATEGY" if is_agency else "NEXUS STRATEGIC AUDIT"
-    pdf.cell(0, 20, header, ln=True, align='L')
-    
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 10, f"Analysis Date: {datetime.date.today()} | Target: {url}", ln=True)
-    pdf.ln(10)
-    
-    # Body Content
-    pdf.set_font("Arial", size=11)
-    clean_text = content.replace("**", "").replace("#", "").encode('latin-1', 'replace').decode('latin-1')
-    pdf.multi_cell(0, 8, clean_text)
-    
-    return bytes(pdf.output())
+# --- 5. AUTHENTICATION & PROFILE SYNC ---
+def auth_portal():
+    st.sidebar.title("🔐 NEXUS Enterprise Access")
+    mode = st.sidebar.selectbox("Access Mode", ["Authorize Account", "Register Organization"])
+    email = st.sidebar.text_input("Corporate ID")
+    pwd = st.sidebar.text_input("Access Key", type="password")
 
-# --- 6. UNIFIED AUTHENTICATION INTERFACE ---
-def render_auth_portal():
-    st.sidebar.title("🔐 NEXUS Pro Access")
-    action = st.sidebar.selectbox("Account Action", ["Login", "Create Account"])
-    email = st.sidebar.text_input("Corporate Email")
-    password = st.sidebar.text_input("Access Password", type="password")
-
-    if action == "Create Account":
-        if st.sidebar.button("Register & Initialize Profile"):
+    if mode == "Register Organization":
+        if st.sidebar.button("Establish Profile"):
             try:
-                # Triggers Supabase Auth + SQL Profile creation
-                supabase.auth.sign_up({"email": email, "password": password})
-                st.sidebar.success("Verification link sent to email.")
-            except Exception as e:
-                st.sidebar.error("Registration failed. Use a valid API URL in secrets.")
+                supabase.auth.sign_up({"email": email, "password": pwd})
+                st.sidebar.success("Registration Initialized. Check Email.")
+            except: st.sidebar.error("Network Error. Check Supabase URL.")
     else:
-        if st.sidebar.button("Authorize Access"):
+        if st.sidebar.button("Authenticate"):
             try:
-                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                res = supabase.auth.sign_in_with_password({"email": email, "password": pwd})
                 st.session_state.user = res.user
                 st.rerun()
-            except:
-                st.sidebar.error("Authentication invalid. Check credentials.")
+            except: st.sidebar.error("Authorization Denied.")
 
-# --- 7. MAIN PRODUCTION DASHBOARD ---
+# --- 6. MAIN ENTERPRISE INTERFACE ---
 if "user" not in st.session_state:
-    render_auth_portal()
-    st.title("⚡ NEXUS Strategic SEO Intelligence")
-    st.write("Professional-grade audits optimized for technical ROI and decision-making.")
-    st.image("https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=2426&ixlib=rb-4.0.3")
+    auth_portal()
+    st.title("⚡ NEXUS Strategic Intelligence")
+    st.markdown("### Professional-grade SEO audits with real-time data visualization.")
+    st.image("https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070")
 else:
-    # Production State Sync
-    profile = fetch_user_state(st.session_state.user.id)
-    if not profile:
-        st.error("Profile not found. Contact support.")
-        st.stop()
-        
-    tier = profile['plan_tier']
-    credits = profile['credits']
+    # Production Data Sync
+    profile = supabase.table("profiles").select("*").eq("id", st.session_state.user.id).single().execute().data
+    tier, credits = profile['plan_tier'], profile['credits']
     
-    # Sidebar Metrics & Upsell logic
-    st.sidebar.success(f"Enterprise Tier: {tier}")
+    st.sidebar.success(f"Tier: {tier}")
     if not PLANS[tier].get("unlimited"):
-        st.sidebar.metric("Analysis Credits", credits)
-        st.sidebar.divider()
-        st.sidebar.markdown("### 🚀 Need More Depth?")
-        st.sidebar.link_button("Upgrade to Agency (€199)", "https://buy.stripe.com/agency_link")
+        st.sidebar.metric("Quota Remaining", f"{credits} Audits")
+        st.sidebar.link_button("🚀 Upgrade License", "https://buy.stripe.com/pro_link")
 
-    st.title("⚡ SEO Strategy Engine")
-    col_a, col_b = st.columns([3, 1])
+    st.title("⚡ Enterprise Strategy Dashboard")
+    target = st.text_input("Global URL Analysis:", placeholder="https://corporate-site.com")
     
-    with col_a:
-        target_site = st.text_input("Target URL (Enterprise or Client Site):", placeholder="https://www.example.com")
-    with col_b:
-        target_lang = st.selectbox("Intelligence Language:", ["English", "Español", "Arabic", "German"])
-    
-    if st.button("🚀 EXECUTE STRATEGIC ANALYSIS") and target_site:
-        # Enforcement of usage limits
+    if st.button("🚀 EXECUTE STRATEGIC ANALYSIS") and target:
         if not PLANS[tier].get("unlimited") and credits <= 0:
-            st.error("🚨 Credit exhaustion. Upgrade required for additional audits.")
+            st.error("License Quota Exhausted.")
         else:
-            report_text = generate_strategic_audit(target_site, target_lang, tier)
-            st.divider()
-            st.markdown(report_text)
+            full_res = execute_deep_audit(target, "English", tier)
             
-            # Post-processing
-            process_credit_deduction(st.session_state.user.id, credits, tier)
+            # Extract JSON for Real-time Charts
+            try:
+                json_match = re.search(r'\{.*\}', full_res, re.DOTALL)
+                data_viz = json.loads(json_match.group())
+                render_analysis_charts(data_viz['score'], data_viz['priorities'])
+            except: st.warning("Visual Data processing incomplete. Reviewing text strategy.")
             
-            # Gated Export Logic
-            if PLANS[tier]["pdf"]:
-                pdf_data = export_professional_report(report_text, target_site, tier)
-                st.download_button("📩 Download PDF Strategy", pdf_data, f"NEXUS_Audit_{target_site}.pdf")
-            else:
-                st.warning("🔒 PDF Generation is restricted to Starter, Pro, and Agency tiers.")
+            st.markdown(re.sub(r'\{.*\}', '', full_res, flags=re.DOTALL))
+            
+            # Credit Logic
+            if not PLANS[tier].get("unlimited"):
+                supabase.table("profiles").update({"credits": credits - 1}).eq("id", st.session_state.user.id).execute()
 
     if st.sidebar.button("Terminate Session"):
         supabase.auth.sign_out()

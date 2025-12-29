@@ -4,142 +4,79 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import time
-import json
-import re
 
-# --- 1. ENTERPRISE CORE ARCHITECTURE ---
-class NexusElite:
-    def __init__(self):
-        # Resolve 405 errors by targeting the direct REST API endpoint
-        self.supabase: Client = create_client(
-            st.secrets["SUPABASE_URL"], 
-            st.secrets["SUPABASE_KEY"]
-        )
-        self.plans = {
-            "Starter": {"price": 100, "credits": 5, "depth": 5000},
-            "Pro": {"price": 1500, "credits": 9999, "depth": 15000},
-            "Agency": {"price": "Especial", "credits": "Unlimited", "depth": 25000}
-        }
+# --- 1. ENTERPRISE INITIALIZATION ---
+@st.cache_resource
+def init_nexus_engine():
+    # Targeted API URL to resolve the 405 error
+    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
-nexus = NexusElite()
+supabase = init_nexus_engine()
 
-# --- 2. LUXURY UI & GLOBAL INTELLIGENCE MAP ---
-def apply_enterprise_theme():
-    st.markdown("""
-        <style>
-        .main { background-color: #050505; color: white; }
-        .stMetric { background: rgba(255,255,255,0.03); border: 1px solid #1a1a1a; padding: 15px; border-radius: 10px; }
-        .agency-card { 
-            border: 2px solid #ff4b4b; padding: 25px; border-radius: 15px; 
-            background: rgba(255, 75, 75, 0.05); text-align: center;
-        }
-        .terminal-box { 
-            background: #000; border: 1px solid #ff4b4b; padding: 20px; 
-            color: #ff4b4b; font-family: 'Courier New', monospace;
-            box-shadow: 0 0 15px rgba(255, 75, 75, 0.2); border-radius: 5px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-def render_global_coverage_map():
-    """Visualizes global intelligence footprint to wow high-ticket clients."""
-    # Mock data representing your 'Elite' customers/nodes worldwide
+# --- 2. THE "WOW" GLOBAL INTELLIGENCE MAP ---
+def render_elite_globe():
+    """High-fidelity globe showing global node density."""
+    # Real-world coordinate mapping for 'Elite' nodes
     data = pd.DataFrame({
-        'Country': ['United States', 'Spain', 'Germany', 'United Arab Emirates', 'United Kingdom', 'Japan', 'Brazil'],
-        'Intelligence_Nodes': [450, 310, 205, 180, 290, 150, 120]
+        'City': ['New York', 'Madrid', 'Dubai', 'London', 'Singapore', 'Tokyo'],
+        'Lat': [40.71, 40.41, 25.20, 51.50, 1.35, 35.67],
+        'Lon': [-74.00, -3.70, 55.27, -0.12, 103.81, 139.65],
+        'Status': ['Online', 'Online', 'Active', 'Active', 'Online', 'Online']
     })
     
-    fig = px.choropleth(data, locations="Country", locationmode='country names',
-                        color="Intelligence_Nodes",
-                        color_continuous_scale='Reds',
-                        title="NEXUS Global Intelligence Network")
+    fig = px.scatter_geo(data, lat='Lat', lon='Lon', hover_name='City',
+                         color_discrete_sequence=['#ff4b4b'],
+                         projection="orthographic") # Makes it a 3D Globe
     
+    fig.update_geos(
+        showcoastlines=True, coastlinecolor="#333",
+        showland=True, landcolor="#050505",
+        showocean=True, oceancolor="#000",
+        showcountries=True, countrycolor="#1a1a1a"
+    )
     fig.update_layout(
-        geo=dict(bgcolor='rgba(0,0,0,0)', lakecolor='#050505', 
-                 showcoastlines=True, coastlinecolor="#333"),
         paper_bgcolor='rgba(0,0,0,0)', font={'color': "white"},
-        margin=dict(l=0, r=0, t=40, b=0)
+        margin=dict(l=0, r=0, t=0, b=0), height=500
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 3. KINETIC DATA VISUALIZATION ---
-def render_kinetic_radar(metrics):
-    """High-fidelity Radar chart for competitive ROI strategy."""
-    fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(
-        r=list(metrics.values()),
-        theta=list(metrics.keys()),
-        fill='toself',
-        line_color='#ff4b4b',
-        fillcolor='rgba(255, 75, 75, 0.2)'
-    ))
-    fig.update_layout(
-        polar=dict(radialaxis=dict(visible=False), bgcolor="rgba(0,0,0,0)"),
-        paper_bgcolor='rgba(0,0,0,0)', font={'color': "white", 'size': 14},
-        height=450
-    )
-    st.plotly_chart(fig, use_container_width=True)
+# --- 3. DUAL-PORTAL AUTHENTICATION ---
+def auth_terminal():
+    st.sidebar.markdown("# 🏛️ NEXUS ACCESS")
+    action = st.sidebar.selectbox("Access Mode", ["Secure Login", "Register Agency"])
+    email = st.sidebar.text_input("Corporate ID")
+    pwd = st.sidebar.text_input("Security Token", type="password")
 
-# --- 4. THE FIRST VIEW (LANDING WOW) ---
-def render_landing():
-    apply_enterprise_theme()
-    st.markdown("<h1 style='text-align: center;'>🏛️ NEXUS ELITE COMMAND</h1>", unsafe_allow_html=True)
-    
-    render_global_coverage_map()
-    
-    col_l, col_r = st.columns([1, 1])
-    with col_l:
-        st.info("### 🔐 Authorize Access")
-        email = st.text_input("Corporate ID")
-        pwd = st.text_input("Security Token", type="password")
-        if st.button("ENTER TERMINAL"):
-            try:
-                res = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
-                st.session_state.user = res.user
-                st.rerun()
-            except: st.error("Access Denied: Invalid Credentials.")
-    
-    with col_r:
-        st.markdown("<div class='agency-card'>", unsafe_allow_html=True)
-        st.markdown("### 💎 Agency Especial")
-        st.write("White-Label | API Access | Bespoke Strategy")
-        st.write("**Pricing: Consultative Only**")
-        if st.button("REQUEST PRIVATE ACCESS"):
-            st.toast("Elite Desk Notified. Stand by.")
-        st.markdown("</div>", unsafe_allow_html=True)
+    if st.sidebar.button("AUTHORIZE"):
+        try:
+            res = supabase.auth.sign_in_with_password({"email": email, "password": pwd})
+            st.session_state.user = res.user
+            st.rerun()
+        except: st.sidebar.error("Access Denied.")
 
-# --- 5. PRODUCTION DASHBOARD ---
+# --- 4. THE COMMAND CENTER ---
 if "user" not in st.session_state:
-    render_landing()
+    st.title("🏛️ NEXUS ELITE COMMAND")
+    render_elite_globe()
+    auth_terminal()
 else:
-    # State Sync with Supabase
-    profile = nexus.supabase.table("profiles").select("*").eq("id", st.session_state.user.id).single().execute().data
-    tier = profile['plan_tier']
+    # --- ADMIN VS CUSTOMER LOGIC ---
+    # Change 'your-email@gmail.com' to your actual email
+    is_admin = (st.session_state.user.email == "your-email@gmail.com")
     
-    st.sidebar.title(f"🏛️ {tier} Terminal")
-    st.sidebar.metric("Analysis Quota", profile['credits'])
-    
-    st.title("⚡ Strategy Deployment")
-    target_url = st.text_input("Global Domain for Analysis (e.g., https://apple.com):")
-    
-    if st.button("EXECUTE SCAN") and target_url:
-        # Kinetic Terminal Overlay
-        terminal = st.empty()
-        with terminal.container():
-            st.markdown('<div class="terminal-box">', unsafe_allow_html=True)
-            st.write("> Initializing Firecrawl Data Harvester...")
-            time.sleep(1)
-            st.write("> Mapping Global Semantic Vectors...")
-            time.sleep(1)
-            st.write("> Executing Multi-Model Intelligence Inference...")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        terminal.empty()
-        # Simulated high-level metrics
-        render_kinetic_radar({"SEO": 9, "Authority": 8, "Tech": 9, "UX": 7, "ROI": 9})
-        st.success(f"Strategic Intelligence Captured: {target_url}")
+    if is_admin:
+        st.title("👑 Admin Intelligence Terminal")
+        st.write("System status: All nodes operational.")
+        # Admin can see all leads
+        if st.button("View Global Leads"):
+            leads = supabase.table("leads").select("*").execute()
+            st.table(leads.data)
+    else:
+        st.title("⚡ Strategy Deployment Terminal")
+        # Standard customer view...
+        st.write(f"Welcome back, {st.session_state.user.email}")
 
     if st.sidebar.button("TERMINATE SESSION"):
-        nexus.supabase.auth.sign_out()
+        supabase.auth.sign_out()
         del st.session_state.user
         st.rerun()

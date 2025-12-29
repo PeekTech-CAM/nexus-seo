@@ -4,3 +4,6 @@ firecrawl-py
 google-genai
 supabase
 stripe
+plotly
+pandas
+fpdf

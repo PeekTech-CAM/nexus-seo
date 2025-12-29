@@ -1,159 +1,147 @@
 import streamlit as st
+from supabase import create_client, Client
+import stripe
 from firecrawl import Firecrawl
 from google import genai
 from fpdf import FPDF
 import os
 
-# --- 1. STRATEGIC SAAS TIERS ---
-# We sell clarity + ROI. Each tier unlocks more "Decision Power"
+# --- 1. CONFIGURATION & SECRETS ---
+# Ensure these are in your Streamlit Secrets
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+FIRE_KEY = st.secrets["FIRE_KEY"]
+GEMINI_KEY = st.secrets["GEMINI_KEY"]
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# --- 2. SAAS TIER DEFINITIONS ---
+# Selling Clarity + Speed + ROI
 PLANS = {
-    "Demo": {
-        "depth": 2500, 
-        "pdf": False, 
-        "label": "Free Demo",
-        "features": "Basic SEO Score"
-    },
-    "Starter": {
-        "depth": 5000, 
-        "pdf": True, 
-        "label": "Starter (€29/mo)",
-        "features": "Critical Errors + PDF Export"
-    },
-    "Pro": {
-        "depth": 15000, 
-        "pdf": True, 
-        "label": "Pro (€79/mo)", 
-        "features": "Prioritized Fixes + Deep Audit"
-    },
-    "Agency": {
-        "depth": 20000, 
-        "pdf": True, 
-        "label": "Agency (€199/mo)", 
-        "white_label": True, # For ROI-driven branding
-        "features": "White-Label + All Languages"
-    }
+    "Demo": {"depth": 2500, "pdf": False, "label": "Free Demo", "credits": 1},
+    "Starter": {"depth": 5000, "pdf": True, "label": "Starter (€29/mo)", "credits": 5},
+    "Pro": {"depth": 15000, "pdf": True, "label": "Pro (€79/mo)", "priority": True},
+    "Agency": {"depth": 20000, "pdf": True, "label": "Agency (€199/mo)", "white_label": True}
 }
 
-st.set_page_config(page_title="NEXUS Pro | Strategic SEO Agent", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="NEXUS Pro | Strategic SEO", page_icon="⚡", layout="wide")
 
-# --- 2. AUTH & PAYMENT GATEWAY (SIMULATED) ---
-# In production, this connects to Supabase and Stripe
-if "user_tier" not in st.session_state:
-    st.session_state["user_tier"] = "Demo"
-
-def login_sidebar():
-    st.sidebar.title("⚡ NEXUS User Portal")
-    
-    # Simulate Plan Detection from Database
-    st.session_state["user_tier"] = st.sidebar.selectbox(
-        "Select Your Plan:", 
-        options=list(PLANS.keys()), 
-        index=list(PLANS.keys()).index(st.session_state["user_tier"])
-    )
-    
-    config = PLANS[st.session_state["user_tier"]]
-    st.sidebar.info(f"**Current:** {config['label']}\n\n**Included:** {config['features']}")
-    
-    if st.session_state["user_tier"] == "Demo":
-        st.sidebar.markdown("---")
-        # Stripe Payment Link Placeholder
-        st.sidebar.button("🔓 Unlock Pro Features") 
-
-# --- 3. THE PRIORITIZATION ENGINE (PDF) ---
-def crear_pdf_pro(texto, url, score, lang, is_agency):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Font Management
-    font_name = "Arial"
-    if os.path.exists("Amiri-Regular.ttf"):
-        pdf.add_font("Amiri", "", "Amiri-Regular.ttf")
-        font_name = "Amiri"
-
-    # White-Labeling for Agency Plan
-    header = "NEXUS STRATEGIC AUDIT" if not is_agency else "PROFESSIONAL SEO AUDIT"
-    
-    pdf.set_font(font_name, size=22)
-    pdf.set_text_color(255, 75, 75)
-    pdf.cell(0, 15, header, ln=True, align='L')
-    
-    pdf.set_font(font_name, size=12)
-    pdf.set_text_color(50, 50, 50)
-    pdf.cell(0, 10, f"Analysis for: {url} | Health Score: {score}/100", ln=True)
-    pdf.ln(10)
-    
-    # Clean text and render
-    txt_clean = texto.replace("**", "").replace("#", "").replace("`", "")
-    pdf.set_font(font_name, size=11)
-    pdf.multi_cell(0, 8, txt_clean)
-    
-    return bytes(pdf.output())
-
-# --- 4. DEEP AUDIT LOGIC ---
-def ejecutar_auditoria(url, lang, tier):
-    config = PLANS[tier]
-    
+# --- 3. AUTHENTICATION HELPERS ---
+def login_user(email, password):
     try:
-        fc = Firecrawl(api_key=st.secrets["FIRE_KEY"])
-        gg = genai.Client(api_key=st.secrets["GEMINI_KEY"])
-    except: return "Check API Keys in Secrets.", 0
+        return supabase.auth.sign_in_with_password({"email": email, "password": password})
+    except Exception as e:
+        st.error(f"Login failed: {e}")
+        return None
 
-    with st.status(f"⚡ Running {tier} Intelligence...") as s:
+def get_user_data(user_id):
+    # Fetch tier and credits from the 'profiles' table you created
+    res = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+    return res.data
+
+# --- 4. THE PRIORITIZATION ENGINE (AI LOGIC) ---
+def run_strategic_audit(url, lang, tier):
+    config = PLANS[tier]
+    fc = Firecrawl(api_key=FIRE_KEY)
+    gg = genai.Client(api_key=GEMINI_KEY)
+
+    with st.status(f"⚡ NEXUS Intelligence analyzing {url}...") as status:
         scrape = fc.scrape(url)
         content = scrape.markdown if hasattr(scrape, 'markdown') else str(scrape)
         
-        # PRIORITIZATION ENGINE PROMPT
+        # Clarity + Action Prompt
         prompt = f"""
         Act as a Senior SEO Consultant. Analyze {url} in {lang}.
-        User Tier: {tier}. Depth: {config['depth']} characters.
+        Tier: {tier}. Depth: {config['depth']} chars.
         
-        OUTPUT STRUCTURE:
-        1. SCORE: [0-100]
-        2. PRIORITIZED ACTION ITEMS:
-           - [HIGH IMPACT] (Fix immediately for Revenue/ROI)
-           - [MEDIUM IMPACT] (Content & Structure)
-           - [LOW IMPACT] (Optimization)
-        3. STRATEGIC RECOMMENDATION.
+        Structure your response for ROI:
+        1. STRATEGIC SCORE: [0-100]
+        2. PRIORITIZED ACTIONS (Address 'Clarity in Action'):
+           - [HIGH IMPACT] (Immediate technical/content fixes)
+           - [MEDIUM IMPACT] (Structural improvements)
+           - [LOW IMPACT] (Long-term growth)
+        3. COMPETITOR ANALYSIS (Brief).
         
-        Language: {lang}. 
         Content: {content[:config['depth']]}
         """
-
+        
         res = gg.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
-        report = res.text
-        
-        score = 65
-        if "SCORE:" in report:
-            try: score = int(report.split("SCORE:")[1].split("\n")[0].strip(" []"))
-            except: pass
-            
-        return report, score
+        return res.text
 
-# --- 5. UI FLOW ---
-login_sidebar()
-
-st.title("⚡ NEXUS SEO Agent Pro")
-st.markdown("### Selling Clarity, Speed, and ROI.")
-
-col1, col2 = st.columns([2, 1])
-with col1:
-    target_url = st.text_input("Target URL:", placeholder="https://example.com")
-with col2:
-    idioma = st.selectbox("Report Language:", ["English", "Español", "Arabic", "German"])
-
-if st.button("🚀 GENERATE STRATEGIC AUDIT") and target_url:
-    current_tier = st.session_state["user_plan"] if "user_plan" in st.session_state else st.session_state["user_tier"]
-    resultado, puntuacion = ejecutar_auditoria(target_url, idioma, current_tier)
+# --- 5. PDF GENERATOR (WHITE-LABEL READY) ---
+def generate_pdf(text, url, tier):
+    pdf = FPDF()
+    pdf.add_page()
+    is_agency = PLANS[tier].get("white_label", False)
     
-    if resultado:
-        st.divider()
-        st.metric("SEO ROI Score", f"{puntuacion}/100")
-        st.markdown(resultado)
-        
-        # Access Gating
-        if PLANS[current_tier]["pdf"]:
-            is_agency = PLANS[current_tier].get("white_label", False)
-            pdf_data = crear_pdf_pro(resultado, target_url, puntuacion, idioma, is_agency)
-            st.download_button("📩 Download Professional PDF", pdf_data, f"NEXUS_{target_url}.pdf")
+    # Header Branding
+    pdf.set_font("Arial", 'B', 16)
+    title = "NEXUS STRATEGIC AUDIT" if not is_agency else "PROFESSIONAL SEO AUDIT"
+    pdf.cell(0, 10, title, ln=True, align='C')
+    
+    pdf.set_font("Arial", size=10)
+    pdf.cell(0, 10, f"Target: {url}", ln=True, align='C')
+    pdf.ln(10)
+    
+    pdf.set_font("Arial", size=11)
+    pdf.multi_cell(0, 7, text.replace("**", "").replace("#", ""))
+    return bytes(pdf.output())
+
+# --- 6. MAIN APP INTERFACE ---
+st.sidebar.title("⚡ NEXUS Pro Panel")
+
+if "user" not in st.session_state:
+    # Login / Sign up Form
+    tab1, tab2 = st.sidebar.tabs(["Login", "Sign Up"])
+    with tab1:
+        email = st.text_input("Email")
+        pwd = st.text_input("Password", type="password")
+        if st.button("Access Dashboard"):
+            auth_res = login_user(email, pwd)
+            if auth_res:
+                st.session_state.user = auth_res.user
+                st.rerun()
+    with tab2:
+        st.info("Direct users to your landing page or Stripe link to register")
+
+else:
+    # Logged In UI
+    user_info = get_user_data(st.session_state.user.id)
+    tier = user_info['plan_tier']
+    credits = user_info['credits']
+    
+    st.sidebar.success(f"Plan: {tier}")
+    if tier == "Demo":
+        st.sidebar.write(f"Credits: {credits}/1")
+        if st.sidebar.button("🚀 Upgrade to Pro"):
+            st.sidebar.markdown("[Go to Stripe Checkout](https://buy.stripe.com/your_link)") #
+    
+    st.title("⚡ Strategic SEO Audit")
+    st.write("Targeting high-impact decisions for your business.")
+    
+    target_url = st.text_input("Enter Website URL:", placeholder="https://example.com")
+    lang = st.selectbox("Language:", ["English", "Español", "Arabic", "German"])
+    
+    if st.button("Run Audit") and target_url:
+        # Check credits for Demo/Starter
+        if tier == "Demo" and credits <= 0:
+            st.error("Out of credits! Please upgrade to continue.")
         else:
-            st.warning("🔒 Upgrade to Starter or Pro to unlock PDF Reports and Deep Analysis.")
+            report = run_strategic_audit(target_url, lang, tier)
+            st.markdown(report)
+            
+            # Deduct credit if Demo
+            if tier == "Demo":
+                supabase.table("profiles").update({"credits": credits - 1}).eq("id", st.session_state.user.id).execute()
+            
+            # PDF Access
+            if PLANS[tier]["pdf"]:
+                pdf_file = generate_pdf(report, target_url, tier)
+                st.download_button("📩 Download Professional Report", pdf_file, "Audit.pdf")
+            else:
+                st.warning("🔒 Upgrade to Starter or Pro to download this as a PDF.")
+
+if st.sidebar.button("Sign Out"):
+    supabase.auth.sign_out()
+    del st.session_state.user
+    st.rerun()

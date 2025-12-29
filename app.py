@@ -4,101 +4,117 @@ from google import genai
 from fpdf import FPDF
 import os
 
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="NEXUS Pro | Global SEO", page_icon="⚡", layout="wide")
+# --- 1. SAAS TIER CONFIGURATION ---
+# People buy clarity + ROI, so we gate features by value
+PLANS = {
+    "Demo": {
+        "depth": 2500, 
+        "pdf": False, 
+        "label": "Free Demo",
+        "features": "Basic Score only"
+    },
+    "Starter": {
+        "depth": 5000, 
+        "pdf": True, 
+        "label": "Starter Plan (€29)",
+        "features": "Critical Errors + PDF"
+    },
+    "Pro": {
+        "depth": 15000, 
+        "pdf": True, 
+        "label": "Pro Plan (€79)", 
+        "features": "Deep Audit + Priority Fixes" # Addressing Denise's comment
+    },
+    "Agency": {
+        "depth": 20000, 
+        "pdf": True, 
+        "label": "Agency Plan (€199)", 
+        "white_label": True, # Branding for ROI
+        "features": "White-Label + Multi-language"
+    }
+}
 
-# --- 2. GESTIÓN DE ACCESO ---
-if "nivel_acceso" not in st.session_state:
-    st.session_state["nivel_acceso"] = "Demo"
+st.set_page_config(page_title="NEXUS Pro | Strategic SEO", page_icon="⚡", layout="wide")
+
+# --- 2. AUTH & PLAN SIMULATION ---
+if "user_plan" not in st.session_state:
+    st.session_state["user_plan"] = "Demo"
 
 def login_sidebar():
-    st.sidebar.title("⚡ NEXUS Pro Panel")
-    if st.session_state["nivel_acceso"] == "Demo":
-        st.sidebar.warning("Estado: Demo Gratuita")
-        with st.sidebar.expander("🔓 Desbloquear Versión Pro"):
-            key = st.text_input("License Key:", type="password")
-            if st.button("Validar Acceso"):
-                if key == "NEXUS2025":
-                    st.session_state["nivel_acceso"] = "Pro"
-                    st.rerun()
-                else: st.sidebar.error("Key Inválida")
-    else:
-        st.sidebar.success("Estado: PRO ACTIVADO")
-        if st.sidebar.button("Cerrar Sesión"):
-            st.session_state["nivel_acceso"] = "Demo"
-            st.rerun()
+    st.sidebar.title("⚡ NEXUS SaaS Panel")
+    
+    # Tier Selector (This simulates your Stripe/Database connection)
+    st.session_state["user_plan"] = st.sidebar.selectbox(
+        "Current Subscription:", 
+        options=list(PLANS.keys()), 
+        index=list(PLANS.keys()).index(st.session_state["user_plan"])
+    )
+    
+    current = PLANS[st.session_state["user_plan"]]
+    st.sidebar.info(f"**Plan:** {current['label']}\n\n**Included:** {current['features']}")
+    
+    if st.session_state["user_plan"] == "Demo":
+        st.sidebar.markdown("---")
+        st.sidebar.button("🚀 Upgrade to Pro") # Placeholder for Stripe Link
 
-# --- 3. MOTOR DE PDF PROFESIONAL (SIN ERRORES) ---
-def crear_pdf_pro(texto, url, score, lang):
+# --- 3. THE PRIORITIZATION ENGINE (PDF) ---
+def crear_pdf_pro(texto, url, score, lang, is_agency):
     pdf = FPDF()
     pdf.add_page()
     
-    # Lógica de fuentes segura
+    # Logic to handle fonts safely
     font_name = "Arial"
-    style_bold = 'B'
-    
     if os.path.exists("Amiri-Regular.ttf"):
-        try:
-            pdf.add_font("Amiri", "", "Amiri-Regular.ttf")
-            font_name = "Amiri"
-            style_bold = "" # Quitamos 'B' para evitar el error si no hay Amiri-Bold.ttf
-        except: pass
+        pdf.add_font("Amiri", "", "Amiri-Regular.ttf")
+        font_name = "Amiri"
 
-    # Títulos dinámicos
-    titulos = {
-        "Arabic": {"t": "NEXUS تقرير", "s": "النتيجة:", "u": "تحليل لـ:", "align": "R"},
-        "English": {"t": "NEXUS STRATEGIC REPORT", "s": "Score:", "u": "Analysis for:", "align": "L"},
-        "Español": {"t": "REPORTE ESTRATÉGICO NEXUS", "s": "Puntuación:", "u": "Análisis para:", "align": "L"}
-    }
-    cfg = titulos.get(lang, titulos["English"])
-
-    # Header seguro
-    pdf.set_font(font_name, style_bold, 20)
-    pdf.set_text_color(255, 75, 75)
-    pdf.cell(0, 15, cfg["t"], ln=True, align=cfg["align"])
+    # White-Label Check
+    header_text = "NEXUS STRATEGIC REPORT" if not is_agency else "SEO AUDIT REPORT"
     
-    pdf.set_font(font_name, style_bold, 12)
+    pdf.set_font(font_name, size=20)
+    pdf.set_text_color(255, 75, 75)
+    pdf.cell(0, 15, header_text, ln=True, align='L')
+    
+    pdf.set_font(font_name, size=12)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, f"{cfg['u']} {url} | {cfg['s']} {score}/100", ln=True, align=cfg["align"])
+    pdf.cell(0, 10, f"URL: {url} | Score: {score}/100", ln=True)
     pdf.ln(10)
     
-    # Limpieza de texto para compatibilidad total
-    txt_clean = texto.replace("**", "").replace("#", "").replace("`", "")
-    
+    # Clean and write body
+    txt_clean = texto.replace("**", "").replace("#", "")
     pdf.set_font(font_name, size=11)
-    align_body = 'R' if lang == "Arabic" else 'L'
-    
-    # Manejo de encodificación para evitar fallos de caracteres
-    try:
-        pdf.multi_cell(0, 8, txt_clean, align=align_body)
-    except:
-        pdf.multi_cell(0, 8, txt_clean.encode('latin-1', 'replace').decode('latin-1'), align=align_body)
+    pdf.multi_cell(0, 8, txt_clean)
     
     return bytes(pdf.output())
 
-# --- 4. AGENTE DE IA ---
-def ejecutar_auditoria(url, lang, acceso):
+# --- 4. AUDIT ENGINE ---
+def ejecutar_auditoria(url, lang, plan_name):
+    config = PLANS[plan_name]
+    
     try:
         fc = Firecrawl(api_key=st.secrets["FIRE_KEY"])
         gg = genai.Client(api_key=st.secrets["GEMINI_KEY"])
-    except: return "Error: Configura tus API Keys.", 0
+    except: return "Check API Keys in Secrets.", 0
 
-    with st.status(f"⚡ NEXUS {acceso} Mode...") as s:
+    with st.status(f"⚡ Running {plan_name} Analysis...") as s:
         scrape = fc.scrape(url)
         content = scrape.markdown if hasattr(scrape, 'markdown') else str(scrape)
         
-        if acceso == "Demo":
-            limit, prompt_type = 2500, "Brief summary (2 lines)"
-        else:
-            limit, prompt_type = 15000, "Deep audit (Errors, H1, Copy)"
-
+        # PROMPT BASED ON CLARITY + PRIORITY
         prompt = f"""
-        You are NEXUS PRO SEO. 
-        MANDATORY LANGUAGE: {lang}.
-        TASK: {prompt_type} for {url}.
-        FORMAT: Include 'SCORE: [0-100]'.
-        Strictly write ONLY in {lang}.
-        Content: {content[:limit]}
+        Act as a Senior SEO Strategist. Analyze {url} in {lang}.
+        Plan Tier: {plan_name}. 
+        Depth: {config['depth']} chars.
+        
+        FORMAT:
+        1. SCORE: [0-100]
+        2. PRIORITIZED ACTIONS:
+           - [HIGH PRIORITY] (Do this first for immediate ROI)
+           - [MEDIUM PRIORITY] (Secondary fixes)
+           - [LOW PRIORITY] (Future growth)
+        
+        Strictly use {lang}. 
+        Content context: {content[:config['depth']]}
         """
 
         res = gg.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
@@ -111,23 +127,28 @@ def ejecutar_auditoria(url, lang, acceso):
             
         return report, score
 
-# --- 5. INTERFAZ ---
+# --- 5. INTERFACE ---
 login_sidebar()
+
 st.title("⚡ NEXUS SEO Agent Pro")
+st.caption("Selling Decisions, Not Features. Designed for Agencies.")
 
-target_url = st.text_input("URL del cliente:", placeholder="https://ejemplo.com")
-idioma = st.selectbox("Idioma:", ["English", "Español", "Arabic", "German", "Portugues", "Italian", "Dutch"])
+target_url = st.text_input("Client URL:", placeholder="https://client-site.com")
+idioma = st.selectbox("Language:", ["English", "Español", "Arabic", "German"])
 
-if st.button("🚀 INICIAR AUDITORÍA") and target_url:
-    resultado, puntuacion = ejecutar_auditoria(target_url, idioma, st.session_state["nivel_acceso"])
+if st.button("🚀 GENERATE STRATEGIC AUDIT") and target_url:
+    current_plan = st.session_state["user_plan"]
+    resultado, puntuacion = ejecutar_auditoria(target_url, idioma, current_plan)
     
     if resultado:
         st.divider()
-        st.metric("SEO Score", f"{puntuacion}/100")
+        st.metric("SEO Performance Score", f"{puntuacion}/100")
         st.markdown(resultado)
         
-        if st.session_state["nivel_acceso"] == "Pro":
-            pdf_data = crear_pdf_pro(resultado, target_url, puntuacion, idioma)
-            st.download_button(f"📩 Descargar PDF ({idioma})", pdf_data, f"NEXUS_{target_url}.pdf", "application/pdf")
+        # Access Gating
+        if PLANS[current_plan]["pdf"]:
+            is_agency = PLANS[current_plan].get("white_label", False)
+            pdf_data = crear_pdf_pro(resultado, target_url, puntuacion, idioma, is_agency)
+            st.download_button("📩 Download Strategic PDF", pdf_data, f"Audit_{target_url}.pdf")
         else:
-            st.warning("🔒 Compra la licencia Pro para descargar el PDF.")
+            st.warning("🔒 Upgrade to Starter or Pro to download the prioritized PDF report.")

@@ -2,3 +2,5 @@ fpdf2
 streamlit
 firecrawl-py
 google-genai
+supabase
+stripe

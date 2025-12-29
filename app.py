@@ -4,117 +4,119 @@ from google import genai
 from fpdf import FPDF
 import os
 
-# --- 1. SAAS TIER CONFIGURATION ---
-# People buy clarity + ROI, so we gate features by value
+# --- 1. STRATEGIC SAAS TIERS ---
+# We sell clarity + ROI. Each tier unlocks more "Decision Power"
 PLANS = {
     "Demo": {
         "depth": 2500, 
         "pdf": False, 
         "label": "Free Demo",
-        "features": "Basic Score only"
+        "features": "Basic SEO Score"
     },
     "Starter": {
         "depth": 5000, 
         "pdf": True, 
-        "label": "Starter Plan (€29)",
-        "features": "Critical Errors + PDF"
+        "label": "Starter (€29/mo)",
+        "features": "Critical Errors + PDF Export"
     },
     "Pro": {
         "depth": 15000, 
         "pdf": True, 
-        "label": "Pro Plan (€79)", 
-        "features": "Deep Audit + Priority Fixes" # Addressing Denise's comment
+        "label": "Pro (€79/mo)", 
+        "features": "Prioritized Fixes + Deep Audit"
     },
     "Agency": {
         "depth": 20000, 
         "pdf": True, 
-        "label": "Agency Plan (€199)", 
-        "white_label": True, # Branding for ROI
-        "features": "White-Label + Multi-language"
+        "label": "Agency (€199/mo)", 
+        "white_label": True, # For ROI-driven branding
+        "features": "White-Label + All Languages"
     }
 }
 
-st.set_page_config(page_title="NEXUS Pro | Strategic SEO", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="NEXUS Pro | Strategic SEO Agent", page_icon="⚡", layout="wide")
 
-# --- 2. AUTH & PLAN SIMULATION ---
-if "user_plan" not in st.session_state:
-    st.session_state["user_plan"] = "Demo"
+# --- 2. AUTH & PAYMENT GATEWAY (SIMULATED) ---
+# In production, this connects to Supabase and Stripe
+if "user_tier" not in st.session_state:
+    st.session_state["user_tier"] = "Demo"
 
 def login_sidebar():
-    st.sidebar.title("⚡ NEXUS SaaS Panel")
+    st.sidebar.title("⚡ NEXUS User Portal")
     
-    # Tier Selector (This simulates your Stripe/Database connection)
-    st.session_state["user_plan"] = st.sidebar.selectbox(
-        "Current Subscription:", 
+    # Simulate Plan Detection from Database
+    st.session_state["user_tier"] = st.sidebar.selectbox(
+        "Select Your Plan:", 
         options=list(PLANS.keys()), 
-        index=list(PLANS.keys()).index(st.session_state["user_plan"])
+        index=list(PLANS.keys()).index(st.session_state["user_tier"])
     )
     
-    current = PLANS[st.session_state["user_plan"]]
-    st.sidebar.info(f"**Plan:** {current['label']}\n\n**Included:** {current['features']}")
+    config = PLANS[st.session_state["user_tier"]]
+    st.sidebar.info(f"**Current:** {config['label']}\n\n**Included:** {config['features']}")
     
-    if st.session_state["user_plan"] == "Demo":
+    if st.session_state["user_tier"] == "Demo":
         st.sidebar.markdown("---")
-        st.sidebar.button("🚀 Upgrade to Pro") # Placeholder for Stripe Link
+        # Stripe Payment Link Placeholder
+        st.sidebar.button("🔓 Unlock Pro Features") 
 
 # --- 3. THE PRIORITIZATION ENGINE (PDF) ---
 def crear_pdf_pro(texto, url, score, lang, is_agency):
     pdf = FPDF()
     pdf.add_page()
     
-    # Logic to handle fonts safely
+    # Font Management
     font_name = "Arial"
     if os.path.exists("Amiri-Regular.ttf"):
         pdf.add_font("Amiri", "", "Amiri-Regular.ttf")
         font_name = "Amiri"
 
-    # White-Label Check
-    header_text = "NEXUS STRATEGIC REPORT" if not is_agency else "SEO AUDIT REPORT"
+    # White-Labeling for Agency Plan
+    header = "NEXUS STRATEGIC AUDIT" if not is_agency else "PROFESSIONAL SEO AUDIT"
     
-    pdf.set_font(font_name, size=20)
+    pdf.set_font(font_name, size=22)
     pdf.set_text_color(255, 75, 75)
-    pdf.cell(0, 15, header_text, ln=True, align='L')
+    pdf.cell(0, 15, header, ln=True, align='L')
     
     pdf.set_font(font_name, size=12)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, f"URL: {url} | Score: {score}/100", ln=True)
+    pdf.set_text_color(50, 50, 50)
+    pdf.cell(0, 10, f"Analysis for: {url} | Health Score: {score}/100", ln=True)
     pdf.ln(10)
     
-    # Clean and write body
-    txt_clean = texto.replace("**", "").replace("#", "")
+    # Clean text and render
+    txt_clean = texto.replace("**", "").replace("#", "").replace("`", "")
     pdf.set_font(font_name, size=11)
     pdf.multi_cell(0, 8, txt_clean)
     
     return bytes(pdf.output())
 
-# --- 4. AUDIT ENGINE ---
-def ejecutar_auditoria(url, lang, plan_name):
-    config = PLANS[plan_name]
+# --- 4. DEEP AUDIT LOGIC ---
+def ejecutar_auditoria(url, lang, tier):
+    config = PLANS[tier]
     
     try:
         fc = Firecrawl(api_key=st.secrets["FIRE_KEY"])
         gg = genai.Client(api_key=st.secrets["GEMINI_KEY"])
     except: return "Check API Keys in Secrets.", 0
 
-    with st.status(f"⚡ Running {plan_name} Analysis...") as s:
+    with st.status(f"⚡ Running {tier} Intelligence...") as s:
         scrape = fc.scrape(url)
         content = scrape.markdown if hasattr(scrape, 'markdown') else str(scrape)
         
-        # PROMPT BASED ON CLARITY + PRIORITY
+        # PRIORITIZATION ENGINE PROMPT
         prompt = f"""
-        Act as a Senior SEO Strategist. Analyze {url} in {lang}.
-        Plan Tier: {plan_name}. 
-        Depth: {config['depth']} chars.
+        Act as a Senior SEO Consultant. Analyze {url} in {lang}.
+        User Tier: {tier}. Depth: {config['depth']} characters.
         
-        FORMAT:
+        OUTPUT STRUCTURE:
         1. SCORE: [0-100]
-        2. PRIORITIZED ACTIONS:
-           - [HIGH PRIORITY] (Do this first for immediate ROI)
-           - [MEDIUM PRIORITY] (Secondary fixes)
-           - [LOW PRIORITY] (Future growth)
+        2. PRIORITIZED ACTION ITEMS:
+           - [HIGH IMPACT] (Fix immediately for Revenue/ROI)
+           - [MEDIUM IMPACT] (Content & Structure)
+           - [LOW IMPACT] (Optimization)
+        3. STRATEGIC RECOMMENDATION.
         
-        Strictly use {lang}. 
-        Content context: {content[:config['depth']]}
+        Language: {lang}. 
+        Content: {content[:config['depth']]}
         """
 
         res = gg.models.generate_content(model="gemini-2.0-flash-exp", contents=prompt)
@@ -127,28 +129,31 @@ def ejecutar_auditoria(url, lang, plan_name):
             
         return report, score
 
-# --- 5. INTERFACE ---
+# --- 5. UI FLOW ---
 login_sidebar()
 
 st.title("⚡ NEXUS SEO Agent Pro")
-st.caption("Selling Decisions, Not Features. Designed for Agencies.")
+st.markdown("### Selling Clarity, Speed, and ROI.")
 
-target_url = st.text_input("Client URL:", placeholder="https://client-site.com")
-idioma = st.selectbox("Language:", ["English", "Español", "Arabic", "German"])
+col1, col2 = st.columns([2, 1])
+with col1:
+    target_url = st.text_input("Target URL:", placeholder="https://example.com")
+with col2:
+    idioma = st.selectbox("Report Language:", ["English", "Español", "Arabic", "German"])
 
 if st.button("🚀 GENERATE STRATEGIC AUDIT") and target_url:
-    current_plan = st.session_state["user_plan"]
-    resultado, puntuacion = ejecutar_auditoria(target_url, idioma, current_plan)
+    current_tier = st.session_state["user_plan"] if "user_plan" in st.session_state else st.session_state["user_tier"]
+    resultado, puntuacion = ejecutar_auditoria(target_url, idioma, current_tier)
     
     if resultado:
         st.divider()
-        st.metric("SEO Performance Score", f"{puntuacion}/100")
+        st.metric("SEO ROI Score", f"{puntuacion}/100")
         st.markdown(resultado)
         
         # Access Gating
-        if PLANS[current_plan]["pdf"]:
-            is_agency = PLANS[current_plan].get("white_label", False)
+        if PLANS[current_tier]["pdf"]:
+            is_agency = PLANS[current_tier].get("white_label", False)
             pdf_data = crear_pdf_pro(resultado, target_url, puntuacion, idioma, is_agency)
-            st.download_button("📩 Download Strategic PDF", pdf_data, f"Audit_{target_url}.pdf")
+            st.download_button("📩 Download Professional PDF", pdf_data, f"NEXUS_{target_url}.pdf")
         else:
-            st.warning("🔒 Upgrade to Starter or Pro to download the prioritized PDF report.")
+            st.warning("🔒 Upgrade to Starter or Pro to unlock PDF Reports and Deep Analysis.")

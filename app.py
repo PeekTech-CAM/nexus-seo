@@ -1,27 +1,29 @@
 import streamlit as st
 from supabase import create_client, Client
+import google.generativeai as genai
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 import time
 
-# --- 1. ENTERPRISE SYSTEM CORE ---
-class NexusEliteSystem:
+# --- 1. ENTERPRISE SYSTEM INITIALIZATION ---
+class NexusEliteEngine:
     def __init__(self):
-        """Initializes secure connection with your verified API URL."""
+        # Initializing core services
         self.supabase: Client = create_client(
             st.secrets["SUPABASE_URL"], 
             st.secrets["SUPABASE_KEY"]
         )
-        self.nodes = pd.DataFrame({
-            'Hub': ['Brazil Hub', 'Morocco Hub', 'USA Node', 'Spain Node', 'UAE Node', 'Singapore Node'],
-            'Lat': [-14.23, 31.79, 37.09, 40.46, 23.42, 1.35],
-            'Lon': [-51.92, -7.09, -95.71, -3.74, 53.84, 103.81]
-        })
+        # Configuring Gemini for AI Roadmaps
+        if "GEMINI_KEY" in st.secrets:
+            genai.configure(api_key=st.secrets["GEMINI_KEY"])
+            self.ai_model = genai.GenerativeModel("gemini-1.5-flash")
+        else:
+            self.ai_model = None
 
-nexus = NexusEliteSystem()
+nexus = NexusEliteEngine()
 
-# --- 2. LUXURY COMMAND CENTER UI ---
+# --- 2. ELITE OBSIDIAN STYLING ---
 def apply_luxury_theme():
     st.markdown("""
         <style>
@@ -34,21 +36,25 @@ def apply_luxury_theme():
             color: white; border: none; font-weight: 700; height: 3.8rem; width: 100%;
             border-radius: 12px; box-shadow: 0 4px 20px rgba(255, 75, 75, 0.4);
         }
+        .agency-box { 
+            border: 2px solid #ff4b4b; padding: 30px; border-radius: 15px; 
+            background: rgba(255,75,75,0.05); text-align: center;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-# --- 3. EXTERNAL VIEW: THE AUTHORIZATION GATE ---
+# --- 3. THE AUTHORIZATION GATE (EXTERNAL) ---
 def render_auth_gate():
     apply_luxury_theme()
-    st.markdown("<h1 style='text-align: center; font-size: 4rem; margin-bottom: 0;'>NEXUS ELITE</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; font-size: 4rem;'>🏛️ NEXUS ELITE</h1>", unsafe_allow_html=True)
     
-    # Kinetic 3D Globe
+    # 3D Kinetic Globe Visualization
     fig = go.Figure(go.Scattergeo(
-        lat=nexus.nodes['Lat'], lon=nexus.nodes['Lon'], mode='markers',
-        marker=dict(size=12, color='#ff4b4b', opacity=0.8)
+        lat=[-14.23, 31.79, 37.09, 23.42], lon=[-51.92, -7.09, -95.71, 53.84],
+        mode='markers', marker=dict(size=12, color='#ff4b4b', opacity=0.9)
     ))
     fig.update_geos(projection_type="orthographic", showland=True, landcolor="#0a0a0a", bgcolor="rgba(0,0,0,0)")
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0, r=0, t=0, b=0), height=500)
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0, r=0, t=0, b=0), height=550)
     st.plotly_chart(fig, use_container_width=True)
 
     col_l, col_r = st.columns([1, 1.2])
@@ -57,16 +63,17 @@ def render_auth_gate():
             st.subheader("🔐 Access Terminal")
             mode = st.radio("Action", ["Login", "Register Organization"], horizontal=True)
             email = st.text_input("Corporate ID (Email)")
-            pwd = st.text_input("Security Token", type="password")
+            pwd = st.text_input("Security Token (Password)", type="password")
             
             if st.button("AUTHORIZE ACCESS"):
                 try:
                     if mode == "Register Organization":
+                        # Sign up only; prevents Foreign Key errors until confirmed
                         nexus.supabase.auth.sign_up({"email": email, "password": pwd})
-                        st.success("✅ Registration Sent. Check your email to confirm account.")
+                        st.success("✅ Profile Initialized. Check email to confirm.")
                     else:
                         auth = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
-                        # Handshake confirmed - initialize profile and move inside
+                        # Handshake confirmed - Upsert profile
                         nexus.supabase.table("profiles").upsert({
                             "id": auth.user.id, "email": email, "plan_tier": "Starter"
                         }).execute()
@@ -78,30 +85,42 @@ def render_auth_gate():
 
     with col_r:
         st.markdown("""
-            <div style='border: 2px solid #ff4b4b; padding: 25px; border-radius: 15px; background: rgba(255,75,75,0.05); text-align: center;'>
+            <div class='agency-box'>
                 <h3 style='color: #ff4b4b;'>💎 Agency Elite</h3>
                 <p>Strategic white-label intelligence and custom data depth.</p>
-                <p><b>Pricing: Contact Sales for Consultation</b></p>
+                <p style='font-size: 1.2rem; font-weight: bold;'>Pricing: Contact Sales for Consultation</p>
+                <p>✅ 25k Node Analysis | ✅ API Export | ✅ Dedicated Support</p>
             </div>
         """, unsafe_allow_html=True)
+        if st.button("REQUEST PRIVATE ACCESS"):
+            st.toast("Elite Desk Notified. Stand by.")
 
-# --- 4. INTERNAL VIEW: THE POWER DASHBOARD ---
+# --- 4. THE COMMAND CENTER (INTERNAL) ---
 def render_internal_dashboard():
     apply_luxury_theme()
     st.sidebar.title("🏛️ Terminal Active")
-    st.sidebar.write(f"Node: {st.session_state.user.email}")
+    st.sidebar.write(f"Authorized Node: {st.session_state.user.email}")
     
-    st.title("🛰️ Strategy Deployment Terminal")
-    
-    # Real-time metrics from the sources
-    c1, c2, c3 = st.columns(3)
+    # Live Intelligence Metrics
+    c1, c2, c3, c4 = st.columns(4)
     c1.metric("Intelligence Nodes", "1,842", "+12")
     c2.metric("Market Scans", "15.4M", "Live")
     c3.metric("Strategic ROI", "342%", "🔥")
-
-    st.subheader("📊 Semantic Vector ROI Analysis")
-    chart_data = pd.DataFrame(np.random.randn(20, 3), columns=['SEO', 'Authority', 'ROI'])
-    st.area_chart(chart_data)
+    c4.metric("Networks", "94", "+5")
+    
+    st.title("⚡ Strategy Deployment Terminal")
+    target = st.text_input("Enter Domain Intelligence Target:")
+    
+    if st.button("EXECUTE VECTOR SCAN") and target:
+        with st.status("Initializing High-Vector Scans..."):
+            time.sleep(1)
+            st.write("> Connecting to Global Harvester Nodes...")
+            time.sleep(1)
+            st.success("Strategic Intelligence Captured.")
+        
+        # Real-time data simulation
+        chart_data = pd.DataFrame(np.random.randn(20, 3), columns=['SEO', 'Authority', 'ROI'])
+        st.area_chart(chart_data)
 
     if st.sidebar.button("TERMINATE SESSION"):
         nexus.supabase.auth.sign_out()

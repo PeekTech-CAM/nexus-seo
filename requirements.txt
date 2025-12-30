@@ -9,3 +9,11 @@ pandas
 fpdf
 streamlit-extras
 streamlit-lottie
+google-generativeai
+streamlit
+supabase
+plotly
+pandas
+numpy
+beautifulsoup4
+requests

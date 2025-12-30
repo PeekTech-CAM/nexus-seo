@@ -1,218 +1,155 @@
 import streamlit as st
 from supabase import create_client, Client
 import google.generativeai as genai
-import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 import time
 
 # -----------------------------
-# 1. SAAS REVENUE ENGINE
+# 1. CORE SYSTEM ENGINE
 # -----------------------------
-class NexusRevenueEngine:
+class NexusSaaSCommand:
     def __init__(self):
+        """Connected to verified Supabase Project."""
         self.supabase: Client = create_client(
             st.secrets["SUPABASE_URL"], 
             st.secrets["SUPABASE_KEY"]
         )
 
-    def sync_billing_state(self, user_id):
-        """Fetches real-time subscription and credit status."""
-        data = (
-            self.supabase.table("profiles")
-            .select("plan_tier, credits")
-            .eq("id", user_id)
-            .single()
-            .execute()
-        )
-        return data.data if data.data else {"plan_tier": "Free", "credits": 0}
+        # Configure Gemini AI if key exists
+        if "GEMINI_KEY" in st.secrets:
+            genai.configure(api_key=st.secrets["GEMINI_KEY"])
+            self.ai = genai.GenerativeModel("gemini-1.5-pro")
 
-
-nexus_billing = NexusRevenueEngine()
-
-
-# -----------------------------
-# 2. DYNAMIC SIDEBAR TERMINAL
-# -----------------------------
-def render_sidebar():
-    billing = nexus_billing.sync_billing_state(st.session_state.user.id)
-
-    st.sidebar.markdown(f"### 🛰️ {billing['plan_tier']} Terminal")
-    st.sidebar.metric("Intelligence Credits", billing['credits'])
-
-    if billing['credits'] < 5:
-        st.sidebar.warning("⚠️ Low Credits: High-Vector analysis may be limited.")
-        st.sidebar.markdown(
-            "[🚀 Upgrade to Agency Elite](https://buy.stripe.com/test_agency)"
-        )
-
-
-# -----------------------------
-# 3. UPDATED AUDIT ENGINE
-# -----------------------------
-def execute_gpt_seo_audit(target, competitor):
-    """Checks credits before allowing expensive AI scans."""
-    billing = nexus_billing.sync_billing_state(st.session_state.user.id)
-
-    if billing['credits'] > 0:
-        # Perform scan and decrement credit
-        new_credits = billing['credits'] - 1
-        nexus_billing.supabase.table("profiles").update(
-            {"credits": new_credits}
-        ).eq("id", st.session_state.user.id).execute()
-        st.success(f"Audit Complete. Node Credits: {new_credits}")
-    else:
-        st.error("Insufficient Credits. Please upgrade your tier.")
-
-
-# -----------------------------
-# 4. ENTERPRISE SYSTEM CORE
-# -----------------------------
-class NexusEliteEngine:
-    def __init__(self):
-        """Initializes connection with verified API and AI nodes."""
-        self.supabase: Client = create_client(
-            st.secrets["SUPABASE_URL"], 
-            st.secrets["SUPABASE_KEY"]
-        )
-        # Tiered Subscription Links
+        # Stripe links for upgrades
         self.stripe_links = {
-            "Pro": "https://buy.stripe.com/test_pro_tier",
+            "Pro": "https://buy.stripe.com/YOUR_LIVE_LINK",
             "Agency": "https://nexus.agency/contact-sales"
         }
-        # Placeholder for AI node
-        self.ai = genai
+
+    def sync_metrics(self):
+        """Fetches live scan counts for the terminal."""
+        res = self.supabase.table("audit_history").select("id", count="exact").execute()
+        return res.count or 0
 
 
-nexus = NexusEliteEngine()
+nexus = NexusSaaSCommand()
 
 
 # -----------------------------
-# 5. LUXURY COMMAND CENTER UI
+# 2. ELITE GLASSMORPHIC UI
 # -----------------------------
-def apply_luxury_theme():
+def apply_elite_ui():
+    """Applies premium crimson-dark theme."""
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono&display=swap');
-
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=JetBrains+Mono&display=swap');
     html, body, [class*="css"] { 
         font-family: 'Space Grotesk', sans-serif; 
-        background: radial-gradient(circle at top left, #1a0505 0%, #050505 100%);
+        background: radial-gradient(circle at top, #1a0505 0%, #050505 100%); 
         color: white; 
     }
-
-    .premium-card {
+    div[data-testid="stMetric"] {
         background: rgba(255, 75, 75, 0.05);
-        backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 75, 75, 0.2);
-        padding: 2rem;
-        border-radius: 20px;
-        text-align: center;
-        transition: 0.4s;
+        padding: 20px; border-radius: 15px; backdrop-filter: blur(10px);
     }
-    .premium-card:hover { border-color: #ff4b4b; transform: translateY(-5px); }
-
     .stButton>button {
         background: linear-gradient(135deg, #ff4b4b 0%, #8b0000 100%);
-        color: white; border: none; font-weight: 700; height: 3.5rem; width: 100%;
-        border-radius: 12px; box-shadow: 0 4px 15px rgba(255, 75, 75, 0.3);
+        color: white; border: none; font-weight: 700; border-radius: 10px;
+        height: 3rem; width: 100%; transition: 0.3s ease;
     }
+    .stButton>button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 75, 75, 0.4); }
     </style>
     """, unsafe_allow_html=True)
 
 
 # -----------------------------
-# 6. ADMIN ENGINE
+# 3. INTERNAL DASHBOARD
 # -----------------------------
-class NexusAdminEngine:
-    def __init__(self, supabase_client):
-        self.supabase = supabase_client
+def render_dashboard():
+    apply_elite_ui()
+    live_count = nexus.sync_metrics()
 
-    def get_all_users(self):
-        return self.supabase.table("profiles").select("*").execute()
+    st.markdown("## 🛰️ Strategy Deployment Terminal")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Nodes", "2,148", "+24")
+    c2.metric("Scans", f"{live_count + 18_200_000:,}", "Live")
+    c3.metric("ROI", "342%", "🔥")
+    c4.metric("Networks", "94", "+5")
 
-    def get_global_audit_logs(self):
-        return self.supabase.table("audit_history").select(
-            "*, profiles(email)"
-        ).order("created_at", desc=True).execute()
+    st.divider()
+
+    # GPT-SEO Audit
+    col_l, col_r = st.columns([1, 1.2])
+    with col_l:
+        st.subheader("🤖 GPT-SEO Audit")
+        target = st.text_input("Target Domain", placeholder="example.com")
+        competitor = st.text_input("Competitor", placeholder="competitor.com")
+
+        if st.button("EXECUTE SEMANTIC SCAN"):
+            if target and competitor:
+                with st.spinner("Analyzing semantic vectors..."):
+                    prompt = f"Perform an expert SEO audit for {target} vs {competitor}. Identify semantic gaps."
+                    intel = nexus.ai.generate_content(prompt).text
+                    nexus.supabase.table("audit_history").insert({
+                        "user_id": st.session_state.user.id,
+                        "target": target,
+                        "competitor": competitor,
+                        "intelligence": intel
+                    }).execute()
+                    st.session_state.current_audit = intel
+                st.success("Audit Complete!")
+            else:
+                st.warning("Please provide both Target and Competitor domains.")
+
+        st.markdown("---")
+        st.markdown(f"[🚀 Upgrade to Pro Tier]({nexus.stripe_links['Pro']})")
+
+    with col_r:
+        if "current_audit" in st.session_state:
+            st.info(st.session_state.current_audit)
+            st.download_button(
+                "📥 DOWNLOAD BRANDED PDF",
+                data=st.session_state.current_audit,
+                file_name="Nexus_Audit.txt"
+            )
+        else:
+            st.markdown(
+                "<div style='border:1px dashed #444; padding:40px; text-align:center; border-radius:10px; color:#888;'>Awaiting Audit Initialization...</div>",
+                unsafe_allow_html=True
+            )
 
 
 # -----------------------------
-# 7. ADMIN VIEW
+# 4. ADMIN MASTER VIEW
 # -----------------------------
 def render_admin_view():
-    admin = NexusAdminEngine(nexus.supabase)
-
     st.title("⚖️ Admin Overlord Terminal")
-    st.markdown("### Strategic SaaS Oversight")
-
-    users = admin.get_all_users().data or []
-    audits = admin.get_global_audit_logs().data or []
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total Organizations", len(users))
-    c2.metric("Total Scans Executed", len(audits))
-    c3.metric("Platform ROI", f"${len(users) * 99}", "Est. Monthly")
-
-    # Users table
+    users = nexus.supabase.table("profiles").select("*").execute().data
     st.subheader("👤 Registered Organizations")
-    df_users = pd.DataFrame(users)
-    st.dataframe(df_users[['email', 'plan_tier', 'credits', 'created_at']], use_container_width=True)
-
-    # Global activity feed
-    st.subheader("🛰️ Live Global Audit Feed")
-    if audits:
-        for log in audits[:10]:
-            with st.expander(f"Audit: {log['target']} by {log.get('profiles', {}).get('email', 'Unknown')}"):
-                st.write(f"**Competitor:** {log['competitor']}")
-                st.write(f"**Timestamp:** {log['created_at']}")
-                st.code(log['intelligence'][:200] + "...")
+    if users:
+        df_users = pd.DataFrame(users)
+        st.dataframe(df_users[['email', 'plan_tier', 'created_at']], use_container_width=True)
     else:
-        st.info("No global audits recorded yet.")
+        st.info("No organizations registered yet.")
 
 
 # -----------------------------
-# 8. MAIN ROUTER
+# 5. SYSTEM ROUTER
 # -----------------------------
 def main():
-    apply_luxury_theme()
-
-    if "user" in st.session_state:
-        st.sidebar.title("🏛️ Terminal Active")
-        st.title("🛰️ Strategy Deployment Terminal")
-        st.sidebar.write(f"Node: {st.session_state.user.email}")
-
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Nodes", "2,148", "+24")
-        c2.metric("Scans", "18.2M", "Live")
-        c3.metric("ROI", "342%", "🔥")
-        c4.metric("Networks", "94", "+5")
-
-        st.subheader("📊 Strategic ROI Projections")
-        st.area_chart(pd.DataFrame(np.random.randn(20, 3)))
-
-        # Admin tab
-        if st.session_state.user.email == "YOUR_ADMIN_EMAIL@gmail.com":
-            tab1, tab2 = st.tabs(["🚀 Strategy Terminal", "⚖️ Admin Master"])
+    if "user" not in st.session_state:
+        st.warning("Authorize terminal access to begin.")
+    else:
+        if st.session_state.user.email == "3dpeektech@gmail.com":
+            tab1, tab2 = st.tabs(["🚀 Terminal", "⚖️ Admin Master"])
             with tab1:
-                render_sidebar()
+                render_dashboard()
             with tab2:
                 render_admin_view()
         else:
-            render_sidebar()
-
-        if st.sidebar.button("TERMINATE SESSION"):
-            nexus.supabase.auth.sign_out()
-            del st.session_state.user
-            st.rerun()
-    else:
-        st.session_state.view = st.session_state.get("view", "pricing")
-        if st.session_state.view == "pricing":
-            st.markdown("<h2>Pricing & Access Tier UI Placeholder</h2>", unsafe_allow_html=True)
-        elif st.session_state.view == "demo":
-            st.markdown("<h2>Demo Placeholder</h2>", unsafe_allow_html=True)
-        elif st.session_state.view == "auth":
-            st.markdown("<h2>Auth Gate Placeholder</h2>", unsafe_allow_html=True)
+            render_dashboard()
 
 
 if __name__ == "__main__":

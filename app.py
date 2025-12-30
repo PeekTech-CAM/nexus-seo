@@ -36,28 +36,28 @@ class NexusEliteSaaS:
 nexus = NexusEliteSaaS()
 class NexusEliteEngine:
     def __init__(self):
+        # Initializing core database and AI nodes
         self.supabase: Client = create_client(
             st.secrets["SUPABASE_URL"], 
             st.secrets["SUPABASE_KEY"]
         )
         if "GEMINI_KEY" in st.secrets:
             genai.configure(api_key=st.secrets["GEMINI_KEY"])
-            # USE THIS SPECIFIC MODEL NAME FOR STABILITY
-            self.model_name = 'gemini-1.5-flash' # Flash is faster and more widely available
+            # Flash is more widely available and resolves 'NotFound' errors
             try:
-                self.ai = genai.GenerativeModel(self.model_name)
+                self.ai = genai.GenerativeModel('gemini-1.5-flash')
             except Exception:
                 self.ai = None
 
-    def safe_generate_audit(self, prompt):
-        """Fail-safe AI generation to prevent 'NotFound' crashes."""
+    def execute_audit(self, prompt):
+        """Fail-safe audit generation."""
         if not self.ai:
-            return "AI Node Offline: Check API Key or Model Name in Secrets."
+            return "AI Node Offline: Check API Key permissions."
         try:
             response = self.ai.generate_content(prompt)
             return response.text
         except Exception as e:
-            return f"Intelligence Stream Interrupted: {str(e)}"
+            return f"Error: {str(e)}"
 # --- 2. ELITE UI ARCHITECTURE ---
 def apply_elite_ui():
     """Renders the obsidian-crimson design system."""
@@ -145,30 +145,19 @@ def render_terminal():
 def render_admin():
     st.title("⚖️ Admin Overlord Terminal")
     try:
-        # Fetch all user data from Supabase
+        # Fetching live organization profiles
         response = nexus.supabase.table("profiles").select("*").execute()
         users = response.data
-        
         if users:
             df = pd.DataFrame(users)
-            
-            # Define the columns we WANT to show
-            target_cols = ['email', 'plan_tier', 'credits', 'created_at']
-            
-            # Only select columns that actually exist in the database to prevent KeyError
-            available_cols = [col for col in target_cols if col in df.columns]
-            
-            st.subheader(f"👤 Organization Nodes ({len(users)})")
-            st.dataframe(df[available_cols], use_container_width=True)
-            
-            # Raw Data Inspector for Debugging
-            with st.expander("🛠️ Debug: Raw Database JSON"):
-                st.write(users)
+            # Only display columns that actually exist in your database
+            display_cols = ['email', 'plan_tier', 'credits', 'created_at']
+            valid_cols = [c for c in display_cols if c in df.columns]
+            st.dataframe(df[valid_cols], use_container_width=True)
         else:
-            st.info("No organization nodes detected in the database.")
-            
+            st.info("No active organization nodes detected.")
     except Exception as e:
-        st.error(f"Terminal Connection Error: {e}")
+        st.error(f"Admin Connection Error: {e}")
 
 # --- 5. SYSTEM ROUTER ---
 def main():

@@ -8,21 +8,22 @@ from datetime import datetime
 import streamlit as st
 import streamlit.components.v1 as components
 
-# --- 1. GA4 INJECTION ENGINE ---
-def inject_ga():
-    """Injects GA4 tracking code into the app's sandboxed iframe."""
-    # Replace G-XXXXXXXXXX with your actual Measurement ID from Google Analytics
-    GA_ID = st.secrets.get("GA_MEASUREMENT_ID", "G-XXXXXXXXXX")
+def inject_tracking():
+    # Use the specific container ID from your screenshot
+    GTM_ID = "GTM-KXF6VCFJ"
     
-    ga_js = f"""
-        <script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){{dataLayer.push(arguments);}}
-            gtag('js', new Date());
-            gtag('config', '{GA_ID}');
-        </script>
+    # This snippet injects the tracking script into your app's sandboxed environment
+    gtm_code = f"""
+        <script>(function(w,d,s,l,i){{w[l]=w[l]||[];w[l].push({{'gtm.start':
+        new Date().getTime(),event:'gtm.js'}});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        }})(window,document,'script','dataLayer','{GTM_ID}');</script>
     """
+    components.html(gtm_code, height=0)
+
+# Call this at the start of your main script
+inject_tracking()
     # height=0 keeps the component invisible to the user
     components.html(ga_js, height=0)
 

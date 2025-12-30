@@ -21,7 +21,35 @@ class NexusEliteEngine:
         }
 
 nexus = NexusEliteEngine()
-
+# Add this function to your render_internal_dashboard() section
+def render_audit_engine():
+    st.subheader("🤖 GPT-SEO Strategic Audit")
+    
+    with st.container(border=True):
+        target_url = st.text_input("Enter Target Domain (e.g., example.com)")
+        competitor_url = st.text_input("Enter Competitor Domain")
+        
+        if st.button("EXECUTE SEMANTIC SCAN"):
+            if target_url and competitor_url:
+                with st.status("Analyzing Search Intelligence...", expanded=True):
+                    st.write("🛰️ Connecting to Intelligence Nodes...")
+                    time.sleep(1)
+                    
+                    # This is where we call Gemini AI
+                    prompt = f"Analyze the SEO semantic gap between {target_url} and {competitor_url}. Provide 3 high-impact directives."
+                    try:
+                        response = nexus.ai.generate_content(prompt)
+                        st.write("✅ Intelligence Captured.")
+                        
+                        st.markdown("### 📡 Strategic Directives")
+                        st.info(response.text)
+                        
+                        # Update SaaS Database Credits
+                        nexus.supabase.table("profiles").update({"credits": 4}).eq("id", st.session_state.user.id).execute()
+                    except Exception as e:
+                        st.error(f"AI Node Error: {e}")
+            else:
+                st.warning("Please provide target and competitor URLs.")
 # --- 2. LUXURY COMMAND CENTER UI ---
 def apply_luxury_theme():
     """Applies glassmorphism and premium typography."""

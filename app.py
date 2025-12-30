@@ -26,7 +26,6 @@ def inject_tracking():
 # --- 2. CORE ENTERPRISE ENGINE ---
 class NexusEliteEngine:
     def __init__(self):
-        """Initializes secure database and AI neural nodes."""
         self.supabase: Client = create_client(
             st.secrets["SUPABASE_URL"], 
             st.secrets["SUPABASE_KEY"]
@@ -34,7 +33,10 @@ class NexusEliteEngine:
         if "GEMINI_KEY" in st.secrets:
             genai.configure(api_key=st.secrets["GEMINI_KEY"])
             try:
+                # Try the latest production-stable model name
                 self.ai = genai.GenerativeModel('gemini-1.5-flash')
+                # If that fails, the SDK might require the 'models/' prefix
+                # self.ai = genai.GenerativeModel('models/gemini-1.5-flash')
             except Exception:
                 self.ai = None
 

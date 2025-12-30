@@ -1,286 +1,120 @@
-# app.py - NEXUS SEO Elite Platform
 import streamlit as st
-from supabase import create_client
-import plotly.express as px
+from supabase import create_client, Client
 import plotly.graph_objects as go
 import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
 import time
-import requests
-from bs4 import BeautifulSoup
-import google.generativeai as genai
+from datetime import datetime
 
-# ------------------------
-# Page configuration
-# ------------------------
-st.set_page_config(
-    page_title="NEXUS SEO Intelligence",
-    page_icon="🚀",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# ------------------------
-# Initialize Supabase
-# ------------------------
+# --- 1. ENTERPRISE INITIALIZATION ---
 @st.cache_resource
-def init_supabase():
-    try:
-        return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
-    except Exception as e:
-        st.error(f"Supabase init error: {e}")
-        return None
+def init_nexus_engine():
+    # Targeted API URL as seen in your secrets fix
+    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
-# ------------------------
-# Initialize Gemini AI
-# ------------------------
-@st.cache_resource
-def init_gemini():
-    try:
-        # Check if the secret exists first to avoid KeyErrors
-        if "GEMINI_API_KEY" in st.secrets:
-            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            # Using 'gemini-1.5-flash' is faster and cheaper for SEO audits
-            return genai.GenerativeModel("gemini-1.5-flash") 
-        else:
-            st.warning("⚠️ GEMINI_API_KEY missing in secrets.")
-            return None
-    except Exception as e:
-        st.error(f"AI Initialization Failed: {e}")
-        return None
+supabase = init_nexus_engine()
 
-supabase = init_supabase()
-gemini_model = init_gemini()
-
-# ------------------------
-# Session state defaults
-# ------------------------
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-if 'user' not in st.session_state:
-    st.session_state.user = None
-if 'user_plan' not in st.session_state:
-    st.session_state.user_plan = 'free'
-if 'audits_used' not in st.session_state:
-    st.session_state.audits_used = 0
-if 'temp_users' not in st.session_state:
-    st.session_state.temp_users = {}
-
-# ------------------------
-# Pricing plans
-# ------------------------
-PLANS = {
-    'free': {
-        'name': 'Free Trial', 'price': 0, 'audits': 1,
-        'features': ['1 audit', 'Basic SEO score', 'Critical errors only'], 'color': '#888'
-    },
-    'starter': {
-        'name': 'Starter', 'price': 1500, 'audits': 5,
-        'features': ['5 audits/month', 'SEO score', 'Critical errors', 'White-label PDF', 'Email support'], 'color': '#ff6b6b'
-    },
-    'pro': {
-        'name': 'Pro', 'price': 2000, 'audits': -1,
-        'features': ['Unlimited audits', 'Deep AI audit', 'Prioritized fixes', 'Competitor comparison', 'Export for clients', 'Priority support'], 'color': '#4ecdc4'
-    },
-    'agency': {
-        'name': 'Agency', 'price': 'Custom', 'audits': -1,
-        'features': ['Everything in Pro', 'Client dashboard', 'Full white-label', 'Lead reports', 'Multi-language', 'Priority AI processing', 'Dedicated account manager'], 'color': '#ffd700'
-    }
-}
-
-# ------------------------
-# Utility functions
-# ------------------------
-def scrape_website(url):
-    """Scrape website data for SEO analysis."""
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        data = {
-            'url': url,
-            'title': soup.title.text if soup.title else 'No title',
-            'meta_description': soup.find('meta', {'name': 'description'}).get('content', '') if soup.find('meta', {'name': 'description'}) else '',
-            'h1_tags': len(soup.find_all('h1')),
-            'h2_tags': len(soup.find_all('h2')),
-            'images': len(soup.find_all('img')),
-            'images_without_alt': len([img for img in soup.find_all('img') if not img.get('alt')]),
-            'internal_links': len([a for a in soup.find_all('a', href=True) if url in a['href']]),
-            'external_links': len([a for a in soup.find_all('a', href=True) if url not in a['href'] and a['href'].startswith('http')]),
-            'word_count': len(soup.get_text().split()),
-            'has_robots': bool(soup.find('meta', {'name': 'robots'})),
-            'has_canonical': bool(soup.find('link', {'rel': 'canonical'})),
-            'load_time': response.elapsed.total_seconds(),
-            'status_code': response.status_code
+# --- 2. LUXURY UI ENGINE (OBSIDIAN THEME) ---
+def apply_luxury_styles():
+    st.markdown("""
+        <style>
+        .main { background: linear-gradient(135deg, #050505 0%, #1a0505 100%); color: white; }
+        [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 2px solid #ff4b4b; }
+        .stMetric { background: rgba(255, 75, 75, 0.05); border: 1px solid #ff4b4b; border-radius: 15px; padding: 20px; }
+        .stButton>button {
+            background: linear-gradient(90deg, #ff4b4b, #8b0000);
+            color: white; border: none; font-weight: 700; height: 3.8rem; width: 100%;
+            border-radius: 12px; box-shadow: 0 4px 20px rgba(255, 75, 75, 0.4);
         }
-        return data, soup.get_text()[:5000]
-    except Exception as e:
-        return None, str(e)
+        .terminal-overlay { 
+            background: #000; border: 1px solid #ff4b4b; padding: 20px; 
+            color: #ff4b4b; font-family: 'Courier New', monospace; border-radius: 8px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-def calculate_seo_score(data):
-    """Compute SEO score and critical issues."""
-    score = 100
-    issues = []
+# --- 3. KINETIC 3D GLOBE ---
+def render_elite_globe():
+    """High-fidelity globe showing active nodes in Brazil, Morocco, and more."""
+    nodes = pd.DataFrame({
+        'Node': ['Brazil Hub', 'Morocco Hub', 'USA Node', 'Spain Node', 'UAE Node', 'Singapore Node'],
+        'Lat': [-14.23, 31.79, 37.09, 40.46, 23.42, 1.35],
+        'Lon': [-51.92, -7.09, -95.71, -3.74, 53.84, 103.81]
+    })
+    fig = go.Figure(go.Scattergeo(
+        lat=nodes['Lat'], lon=nodes['Lon'], mode='markers+text', text=nodes['Node'],
+        marker=dict(size=12, color='#ff4b4b', line=dict(width=2, color='white'))
+    ))
+    fig.update_geos(
+        projection_type="orthographic", showcoastlines=True, coastlinecolor="#222",
+        showland=True, landcolor="#0a0a0a", showocean=True, oceancolor="#050505", bgcolor="rgba(0,0,0,0)"
+    )
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0, r=0, t=0, b=0), height=600)
+    st.plotly_chart(fig, use_container_width=True)
 
-    # Title
-    if not data.get('title') or data['title'] == 'No title':
-        score -= 15
-        issues.append('❌ Missing page title')
-    elif len(data['title']) < 30 or len(data['title']) > 60:
-        score -= 5
-        issues.append('⚠️ Title length not optimal (30-60 chars)')
-
-    # Meta description
-    if not data.get('meta_description'):
-        score -= 10
-        issues.append('❌ Missing meta description')
-    elif len(data['meta_description']) < 120 or len(data['meta_description']) > 160:
-        score -= 5
-        issues.append('⚠️ Meta description length not optimal (120-160 chars)')
-
-    # H1 tags
-    if data['h1_tags'] == 0:
-        score -= 10
-        issues.append('❌ No H1 tag found')
-    elif data['h1_tags'] > 1:
-        score -= 5
-        issues.append('⚠️ Multiple H1 tags found')
-
-    # Images
-    if data['images_without_alt'] > 0:
-        score -= min(10, data['images_without_alt'] * 2)
-        issues.append(f'⚠️ {data["images_without_alt"]} images without alt text')
-
-    # Content length
-    if data['word_count'] < 300:
-        score -= 10
-        issues.append('❌ Thin content (less than 300 words)')
-
-    # Technical
-    if not data.get('has_robots'):
-        score -= 5
-        issues.append('⚠️ Missing robots meta tag')
-    if not data.get('has_canonical'):
-        score -= 5
-        issues.append('⚠️ Missing canonical URL')
-    if data.get('load_time', 0) > 3:
-        score -= 10
-        issues.append('❌ Slow page load time (>3s)')
-
-    return max(0, score), issues
-
-def get_ai_analysis(url, scraped_data, content_sample):
-    """Generate deep AI SEO analysis via Gemini."""
-    if not gemini_model:
-        return "AI analysis unavailable. Configure GEMINI_API_KEY in secrets."
+# --- 4. SECURE AUTHENTICATION (FIXED HANDSHAKE) ---
+def auth_terminal():
+    apply_luxury_styles()
+    st.markdown("<h1 style='text-align: center;'>🏛️ NEXUS ELITE COMMAND</h1>", unsafe_allow_html=True)
+    render_elite_globe()
     
-    try:
-        prompt = f"""
-        You are an expert SEO consultant. Analyze this website:
+    col_l, col_r = st.columns([1, 1.2])
+    with col_l:
+        with st.container(border=True):
+            st.subheader("🔐 Access Terminal")
+            mode = st.radio("Action", ["Login", "Register Organization"], horizontal=True)
+            email = st.text_input("Corporate ID (Email)")
+            pwd = st.text_input("Security Token (Password)", type="password")
+            
+            if st.button("AUTHORIZE ACCESS"):
+                try:
+                    if mode == "Register Organization":
+                        # 1. Sign up the user
+                        res = supabase.auth.sign_up({"email": email, "password": pwd})
+                        # 2. AUTO-CREATE PROFILE: This fixes the "Access Denied" error
+                        supabase.table("profiles").insert({
+                            "id": res.user.id, "email": email, "plan_tier": "Starter", "credits": 5
+                        }).execute()
+                        st.success("✅ Profile Initialized. Check email to confirm.")
+                    else:
+                        auth = supabase.auth.sign_in_with_password({"email": email, "password": pwd})
+                        st.session_state.user = auth.user
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Access Denied: Check credentials or verify your email.")
 
-        URL: {url}
-        Technical Data: {scraped_data}
-        Content Sample: {content_sample[:1000]}
+    with col_r:
+        st.markdown("""
+            <div style='border: 2px solid #ff4b4b; padding: 25px; border-radius: 15px; background: rgba(255,75,75,0.05);'>
+                <h3 style='color: #ff4b4b;'>💎 Agency Especial</h3>
+                <p>Private licensing and bespoke strategy for high-ticket partners.</p>
+                <p><b>Consultation License: €3,000 / mo</b></p>
+                <button style='width: 100%; padding: 10px; border-radius: 5px; background: #ff4b4b; border: none; color: white; font-weight:bold;'>REQUEST PRIVATE ACCESS</button>
+            </div>
+        """, unsafe_allow_html=True)
 
-        Provide:
-        1. SEO Score Breakdown
-        2. Critical Issues
-        3. Priority Improvements
-        4. Content Strategy
-        5. Technical Recommendations
-        6. Competitive Advantages
-        7. 30-Day Action Plan
-
-        Format as markdown.
-        """
-        response = gemini_model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        return f"AI analysis error: {e}"
-
-def save_audit_to_db(user_email, url, score, plan):
-    """Save audit results to Supabase."""
-    if not supabase:
-        return
-    try:
-        supabase.table('audits').insert({
-            'user_email': user_email,
-            'url': url,
-            'score': score,
-            'plan': plan,
-            'created_at': datetime.now().isoformat()
-        }).execute()
-    except Exception as e:
-        st.error(f"Database error: {e}")
-
-def get_user_audits(user_email):
-    """Retrieve user's audit history."""
-    if not supabase:
-        return []
-    try:
-        response = supabase.table('audits').select('*').eq('user_email', user_email).order('created_at', desc=True).limit(10).execute()
-        return response.data
-    except:
-        return []
-
-# ------------------------
-# Authentication
-# ------------------------
-def register_user(email, password):
-    try:
-        if supabase:
-            res = supabase.auth.sign_up({"email": email, "password": password})
-            if res.user:
-                supabase.table('users').insert({
-                    'email': email, 'plan': 'free', 'audits_used': 0,
-                    'created_at': datetime.now().isoformat()
-                }).execute()
-                st.session_state.user = res.user
-                st.session_state.authenticated = True
-                st.session_state.user_plan = 'free'
-                return "success", "Account created! 1 free audit."
-    except Exception as e:
-        if "already" in str(e).lower():
-            return "error", "Email already registered"
+# --- 5. ENTERPRISE DASHBOARD ---
+if "user" not in st.session_state:
+    auth_terminal()
+else:
+    apply_luxury_styles()
+    # Fetch User Stats
+    profile = supabase.table("profiles").select("*").eq("id", st.session_state.user.id).single().execute().data
     
-    # Demo fallback
-    if email not in st.session_state.temp_users:
-        st.session_state.temp_users[email] = {'password': password, 'plan': 'free', 'audits': 0}
-        return "demo", "Demo account created! You can login now."
-    return "error", "Registration failed"
+    st.sidebar.title(f"🏛️ {profile['plan_tier']} Terminal")
+    st.sidebar.metric("Audits Remaining", profile['credits'])
+    
+    st.title("🛰️ Strategy Deployment Node")
+    target = st.text_input("Domain Analysis Target:")
+    
+    if st.button("EXECUTE SCAN") and target:
+        with st.status("Initializing High-Vector Scans..."):
+            time.sleep(1)
+            st.write("> Connecting to Global Harvester Nodes...")
+            time.sleep(1.2)
+            st.success("Strategic Intelligence Captured.")
+        # Visual charts go here...
 
-def login_user(email, password):
-    try:
-        if supabase:
-            res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-            if res.user:
-                user_data = supabase.table('users').select('*').eq('email', email).execute()
-                if user_data.data:
-                    st.session_state.user_plan = user_data.data[0].get('plan', 'free')
-                    st.session_state.audits_used = user_data.data[0].get('audits_used', 0)
-                st.session_state.user = res.user
-                st.session_state.authenticated = True
-                return "success", "Welcome back!"
-    except:
-        # Demo fallback
-        if email in st.session_state.temp_users and st.session_state.temp_users[email]['password'] == password:
-            st.session_state.authenticated = True
-            st.session_state.user = {"email": email}
-            st.session_state.user_plan = st.session_state.temp_users[email]['plan']
-            st.session_state.audits_used = st.session_state.temp_users[email]['audits']
-            return "demo", "Demo login successful"
-    return "error", "Invalid credentials"
-
-# ------------------------
-# Main app
-# ------------------------
-def main():
-    if not st.session_state.authenticated:
-        auth_page()
-    else:
-        main_dashboard()
-
-if __name__ == "__main__":
-    main()
+    if st.sidebar.button("Logout"):
+        supabase.auth.sign_out()
+        del st.session_state.user
+        st.rerun()

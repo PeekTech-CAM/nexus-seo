@@ -38,10 +38,16 @@ def init_supabase():
 @st.cache_resource
 def init_gemini():
     try:
-        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-        return genai.GenerativeModel("gemini-pro")
+        # Check if the secret exists first to avoid KeyErrors
+        if "GEMINI_API_KEY" in st.secrets:
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+            # Using 'gemini-1.5-flash' is faster and cheaper for SEO audits
+            return genai.GenerativeModel("gemini-1.5-flash") 
+        else:
+            st.warning("⚠️ GEMINI_API_KEY missing in secrets.")
+            return None
     except Exception as e:
-        st.warning(f"Gemini AI not configured: {e}")
+        st.error(f"AI Initialization Failed: {e}")
         return None
 
 supabase = init_supabase()

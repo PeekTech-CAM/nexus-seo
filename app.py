@@ -5,39 +5,25 @@ import pandas as pd
 import numpy as np
 import time
 from datetime import datetime
-import streamlit as st
 import streamlit.components.v1 as components
 
+# --- 1. TRACKING INJECTION (FIXED) ---
 def inject_tracking():
-    # Use the specific container ID from your screenshot
+    """Injects GTM tracking into the Streamlit sandboxed environment."""
+    # Your verified ID from screenshot image_22dfa3.png
     GTM_ID = "GTM-KXF6VCFJ"
     
-    # This snippet injects the tracking script into your app's sandboxed environment
     gtm_code = f"""
         <script>(function(w,d,s,l,i){{w[l]=w[l]||[];w[l].push({{'gtm.start':
         new Date().getTime(),event:'gtm.js'}});var f=d.getElementsByTagName(s)[0],
         j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
         }})(window,document,'script','dataLayer','{GTM_ID}');</script>
-    """
+        """
+    # This must be indented exactly 4 spaces inside the function
     components.html(gtm_code, height=0)
 
-# Call this at the start of your main script
-inject_tracking()
-    # height=0 keeps the component invisible to the user
-    components.html(ga_js, height=0)
-
-# --- 2. THE TERMINAL WITH OBSERVABILITY ---
-def main():
-    inject_ga() # Initialize tracking on every page load
-    
-    if "user" not in st.session_state:
-        # (Standard Auth Logic remains here)
-        pass
-    else:
-        # (Standard Dashboard Logic remains here)
-        pass
-# --- 1. CORE ENTERPRISE ENGINE ---
+# --- 2. CORE ENTERPRISE ENGINE ---
 class NexusEliteEngine:
     def __init__(self):
         """Initializes secure database and AI neural nodes."""
@@ -47,14 +33,12 @@ class NexusEliteEngine:
         )
         if "GEMINI_KEY" in st.secrets:
             genai.configure(api_key=st.secrets["GEMINI_KEY"])
-            # Switching to 'flash' resolves the google.api_core.exceptions.NotFound error
             try:
                 self.ai = genai.GenerativeModel('gemini-1.5-flash')
             except Exception:
                 self.ai = None
 
     def safe_audit(self, prompt):
-        """Fail-safe generation to prevent terminal crashes."""
         if not self.ai:
             return "AI Node Offline. Check API Key permissions."
         try:
@@ -64,15 +48,13 @@ class NexusEliteEngine:
             return f"Intelligence Stream Error: {str(e)}"
 
     def sync_user(self, user_id):
-        """Fetches live profile data from Supabase."""
         res = self.supabase.table("profiles").select("*").eq("id", user_id).single().execute()
         return res.data
 
 nexus = NexusEliteEngine()
 
-# --- 2. LUXURY COMMAND UI ---
+# --- 3. LUXURY COMMAND UI ---
 def apply_elite_ui():
-    """Renders the high-authority obsidian-crimson design."""
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=JetBrains+Mono&display=swap');
@@ -89,12 +71,11 @@ def apply_elite_ui():
         </style>
     """, unsafe_allow_html=True)
 
-# --- 3. DYNAMIC TERMINAL ---
+# --- 4. DYNAMIC TERMINAL ---
 def render_terminal():
     apply_elite_ui()
     profile = nexus.sync_user(st.session_state.user.id)
     
-    # Live KPI Board
     st.markdown("## 🛰️ Strategy Deployment Terminal")
     st.sidebar.markdown(f"**Node:** {profile.get('email', 'Unknown')}")
     st.sidebar.markdown(f"**Tier:** {profile.get('plan_tier', 'Starter')}")
@@ -108,7 +89,6 @@ def render_terminal():
 
     st.divider()
 
-    # GPT-SEO Engine
     col_l, col_r = st.columns([1, 1.2])
     with col_l:
         st.subheader("🤖 AI Semantic Audit")
@@ -120,7 +100,6 @@ def render_terminal():
                 with st.status("Analyzing Vectors..."):
                     prompt = f"Perform an elite SEO audit for {target} vs {comp}."
                     intel = nexus.safe_audit(prompt)
-                    # Log Audit & Decrement Credit
                     nexus.supabase.table("audit_history").insert({"user_id": st.session_state.user.id, "target": target, "intelligence": intel}).execute()
                     nexus.supabase.table("profiles").update({"credits": profile['credits']-1}).eq("id", st.session_state.user.id).execute()
                     st.session_state.last_audit = intel
@@ -133,7 +112,7 @@ def render_terminal():
             st.info(st.session_state.last_audit)
             st.download_button("📥 DOWNLOAD PDF", data=st.session_state.last_audit, file_name="Nexus_Audit.txt")
 
-# --- 4. BULLETPROOF ADMIN ---
+# --- 5. ADMIN OVERLORD ---
 def render_admin():
     st.title("⚖️ Admin Overlord Terminal")
     try:
@@ -141,25 +120,31 @@ def render_admin():
         users = response.data
         if users:
             df = pd.DataFrame(users)
-            # Dynamic check to prevent KeyError
             cols = ['email', 'plan_tier', 'credits', 'created_at']
             valid = [c for c in cols if c in df.columns]
             st.dataframe(df[valid], use_container_width=True)
     except Exception as e:
         st.error(f"Admin Error: {e}")
 
-# --- 5. SYSTEM ROUTER ---
+# --- 6. MAIN ROUTER ---
 def main():
+    # Initialize GTM Tracking once per session
+    inject_tracking()
+    
     if "user" not in st.session_state:
         apply_elite_ui()
         st.title("🏛️ NEXUS ELITE ACCESS")
         email = st.text_input("Corporate ID")
         pwd = st.text_input("Security Token", type="password")
         if st.button("AUTHORIZE"):
-            auth = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
-            st.session_state.user = auth.user
-            st.rerun()
+            try:
+                auth = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
+                st.session_state.user = auth.user
+                st.rerun()
+            except Exception as e:
+                st.error(f"Access Denied: {e}")
     else:
+        # Admin check for your specific node
         if st.session_state.user.email == "3dpeektech@gmail.com":
             t1, t2 = st.tabs(["🚀 Terminal", "⚖️ Admin Master"])
             with t1: render_terminal()

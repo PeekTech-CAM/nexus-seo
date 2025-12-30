@@ -5,7 +5,37 @@ import pandas as pd
 import numpy as np
 import time
 from datetime import datetime
+import streamlit as st
+import streamlit.components.v1 as components
 
+# --- 1. GA4 INJECTION ENGINE ---
+def inject_ga():
+    """Injects GA4 tracking code into the app's sandboxed iframe."""
+    # Replace G-XXXXXXXXXX with your actual Measurement ID from Google Analytics
+    GA_ID = st.secrets.get("GA_MEASUREMENT_ID", "G-XXXXXXXXXX")
+    
+    ga_js = f"""
+        <script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){{dataLayer.push(arguments);}}
+            gtag('js', new Date());
+            gtag('config', '{GA_ID}');
+        </script>
+    """
+    # height=0 keeps the component invisible to the user
+    components.html(ga_js, height=0)
+
+# --- 2. THE TERMINAL WITH OBSERVABILITY ---
+def main():
+    inject_ga() # Initialize tracking on every page load
+    
+    if "user" not in st.session_state:
+        # (Standard Auth Logic remains here)
+        pass
+    else:
+        # (Standard Dashboard Logic remains here)
+        pass
 # --- 1. CORE ENTERPRISE ENGINE ---
 class NexusEliteEngine:
     def __init__(self):

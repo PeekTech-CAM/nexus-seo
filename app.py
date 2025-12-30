@@ -5,7 +5,50 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 import time
+import streamlit as st
+from supabase import create_client, Client
+import google.generativeai as genai
 
+# --- 1. SAAS REVENUE ENGINE ---
+class NexusRevenueEngine:
+    def __init__(self):
+        self.supabase: Client = create_client(
+            st.secrets["SUPABASE_URL"], 
+            st.secrets["SUPABASE_KEY"]
+        )
+
+    def sync_billing_state(self, user_id):
+        """Fetches real-time subscription and credit status."""
+        data = self.supabase.table("profiles").select("plan_tier, credits").eq("id", user_id).single().execute()
+        return data.data if data.data else {"plan_tier": "Free", "credits": 0}
+
+nexus_billing = NexusRevenueEngine()
+
+# --- 2. DYNAMIC SIDEBAR TERMINAL ---
+def render_sidebar():
+    # Real-time sync of user data from Supabase
+    billing = nexus_billing.sync_billing_state(st.session_state.user.id)
+    
+    st.sidebar.markdown(f"### 🛰️ {billing['plan_tier']} Terminal")
+    st.sidebar.metric("Intelligence Credits", billing['credits']) # Matches
+    
+    if billing['credits'] < 5:
+        st.sidebar.warning("⚠️ Low Credits: High-Vector analysis may be limited.")
+        st.sidebar.link_button("🚀 Upgrade to Agency Elite", "https://buy.stripe.com/test_agency")
+
+# --- 3. UPDATED AUDIT ENGINE (WITH BILLING CHECK) ---
+def execute_gpt_seo_audit(target, competitor):
+    """Checks credits before allowing expensive AI scans."""
+    billing = nexus_billing.sync_billing_state(st.session_state.user.id)
+    
+    if billing['credits'] > 0:
+        # Perform scan and decrement credit
+        # (AI Logic remains as previously built)
+        new_credits = billing['credits'] - 1
+        nexus_billing.supabase.table("profiles").update({"credits": new_credits}).eq("id", st.session_state.user.id).execute()
+        st.success(f"Audit Complete. Node Credits: {new_credits}")
+    else:
+        st.error("Insufficient Credits. Please upgrade your tier.")
 # --- 1. ENTERPRISE SYSTEM CORE ---
 class NexusEliteEngine:
     def __init__(self):

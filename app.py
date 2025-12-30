@@ -130,21 +130,26 @@ def render_admin():
 
 # --- 6. MAIN ROUTER ---
 def main():
-    # Initialize GTM Tracking once per session
     inject_tracking()
     
+    # 1. AUTHENTICATION GATE
     if "user" not in st.session_state:
-        apply_elite_ui()
-        st.title("🏛️ NEXUS ELITE ACCESS")
-        email = st.text_input("Corporate ID")
-        pwd = st.text_input("Security Token", type="password")
-        if st.button("AUTHORIZE"):
-            try:
-                auth = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
-                st.session_state.user = auth.user
-                st.rerun()
-            except Exception as e:
-                st.error(f"Access Denied: {e}")
+        render_public_landing() # Registration, Demo info, and Pro upgrade links
+    else:
+        profile = nexus.sync_user(st.session_state.user.id)
+        
+        # 2. ADMIN NODE (Exclusive to you)
+        if profile['email'] == "3dpeektech@gmail.com":
+            render_admin_master()
+            
+        # 3. CLIENT NODE (Features based on Tier)
+        else:
+            if profile['plan_tier'] == 'Demo':
+                render_demo_terminal(profile)
+            elif profile['plan_tier'] == 'Starter':
+                render_starter_terminal(profile)
+            elif profile['plan_tier'] == 'Agency Elite':
+                render_elite_terminal(profile)
     else:
         # Admin check for your specific node
         if st.session_state.user.email == "3dpeektech@gmail.com":

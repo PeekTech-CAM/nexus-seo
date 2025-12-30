@@ -121,10 +121,31 @@ def render_terminal():
 # --- 4. ADMIN MASTER VIEW ---
 def render_admin():
     st.title("⚖️ Admin Overlord Terminal")
-    # Fetch all user data for business intelligence
-    users = nexus.supabase.table("profiles").select("*").execute().data
-    st.subheader("👤 Organization Nodes")
-    st.dataframe(pd.DataFrame(users)[['email', 'plan_tier', 'credits', 'created_at']], use_container_width=True)
+    try:
+        # Fetch all user data from Supabase
+        response = nexus.supabase.table("profiles").select("*").execute()
+        users = response.data
+        
+        if users:
+            df = pd.DataFrame(users)
+            
+            # Define the columns we WANT to show
+            target_cols = ['email', 'plan_tier', 'credits', 'created_at']
+            
+            # Only select columns that actually exist in the database to prevent KeyError
+            available_cols = [col for col in target_cols if col in df.columns]
+            
+            st.subheader(f"👤 Organization Nodes ({len(users)})")
+            st.dataframe(df[available_cols], use_container_width=True)
+            
+            # Raw Data Inspector for Debugging
+            with st.expander("🛠️ Debug: Raw Database JSON"):
+                st.write(users)
+        else:
+            st.info("No organization nodes detected in the database.")
+            
+    except Exception as e:
+        st.error(f"Terminal Connection Error: {e}")
 
 # --- 5. SYSTEM ROUTER ---
 def main():

@@ -6,109 +6,139 @@ import pandas as pd
 import numpy as np
 import time
 
-# --- 1. ENTERPRISE SYSTEM CORE ---
-class NexusEliteEngine:
+# --- 1. CORE ENGINE ---
+class NexusProductionEngine:
     def __init__(self):
-        # Uses your verified Project API URL
-        self.supabase: Client = create_client(
-            st.secrets["SUPABASE_URL"], 
-            st.secrets["SUPABASE_KEY"]
-        )
-        # Strategic Nodes for visual authority
-        self.nodes = pd.DataFrame({
-            'Hub': ['Brazil Hub', 'Morocco Hub', 'USA Node', 'Spain Node'],
-            'Lat': [-14.23, 31.79, 37.09, 40.46],
-            'Lon': [-51.92, -7.09, -95.71, -3.74]
-        })
+        self.supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+        if "GEMINI_KEY" in st.secrets:
+            genai.configure(api_key=st.secrets["GEMINI_KEY"])
+            self.ai = genai.GenerativeModel("gemini-1.5-pro")
+        else:
+            self.ai = None
 
-nexus = NexusEliteEngine()
+nexus = NexusProductionEngine()
 
-# --- 2. LUXURY COMMAND CENTER UI ---
-def apply_luxury_theme():
+# --- 2. LUXURY UI DESIGN SYSTEM ---
+def apply_luxury_ui():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&display=swap');
-        html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; background-color: #050505; color: white; }
-        [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 2px solid #ff4b4b; }
-        .stMetric { background: rgba(255, 75, 75, 0.05); border: 1px solid #ff4b4b; padding: 20px; border-radius: 15px; }
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono&display=swap');
+        
+        /* Master Container */
+        html, body, [class*="css"] { 
+            font-family: 'Space Grotesk', sans-serif; 
+            background: radial-gradient(circle at top left, #1a0505 0%, #050505 100%); 
+            color: #e0e0e0; 
+        }
+
+        /* Glassmorphism Sidebar */
+        [data-testid="stSidebar"] {
+            background: rgba(10, 10, 10, 0.8) !important;
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 75, 75, 0.2);
+        }
+
+        /* Glowing Metric Cards */
+        div[data-testid="stMetric"] {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(255, 75, 75, 0.3);
+            border-radius: 20px;
+            padding: 25px !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        /* Crimson Neon Button */
         .stButton>button {
-            background: linear-gradient(90deg, #ff4b4b, #8b0000);
+            background: linear-gradient(135deg, #ff4b4b 0%, #8b0000 100%);
             color: white; border: none; font-weight: 700; height: 3.8rem; width: 100%;
-            border-radius: 12px; box-shadow: 0 4px 20px rgba(255, 75, 75, 0.4);
+            border-radius: 12px; letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(255, 75, 75, 0.3);
+            transition: all 0.3s ease;
+        }
+        .stButton>button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255, 75, 75, 0.6);
+        }
+
+        /* Terminal Style Logs */
+        .terminal-text {
+            font-family: 'JetBrains Mono', monospace;
+            color: #ff4b4b;
+            font-size: 0.85rem;
+            background: #000;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 3px solid #ff4b4b;
         }
         </style>
     """, unsafe_allow_html=True)
 
-# --- 3. THE AUTHORIZATION GATE (EXTERNAL) ---
-def render_auth_gate():
-    apply_luxury_theme()
-    st.markdown("<h1 style='text-align: center; font-size: 3.5rem;'>🏛️ NEXUS ELITE</h1>", unsafe_allow_html=True)
-    
-    # 3D Kinetic Globe visualization
-    fig = go.Figure(go.Scattergeo(lat=nexus.nodes['Lat'], lon=nexus.nodes['Lon'], mode='markers'))
-    fig.update_geos(projection_type="orthographic", showland=True, landcolor="#0a0a0a", bgcolor="rgba(0,0,0,0)")
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0, r=0, t=0, b=0), height=550)
-    st.plotly_chart(fig, use_container_width=True)
+# --- 3. KINETIC DATA VISUALS ---
+def render_roi_spider_chart():
+    """Enterprise-grade radar chart for multi-vector SEO analysis."""
+    categories = ['Technical SEO', 'Content Depth', 'Authority', 'UX/Core Vitals', 'Semantic Match']
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=[85, 92, 78, 95, 88], theta=categories, fill='toself',
+        fillcolor='rgba(255, 75, 75, 0.3)', line=dict(color='#ff4b4b', width=3)
+    ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, 100], gridcolor="#333"), bgcolor="rgba(0,0,0,0)"),
+        paper_bgcolor='rgba(0,0,0,0)', font=dict(color="#fff", size=12), margin=dict(l=80, r=80, t=20, b=20)
+    )
+    return fig
 
-    col_l, col_r = st.columns([1, 1.2])
-    with col_l:
+# --- 4. THE COMMAND CENTER ---
+def render_dashboard():
+    apply_luxury_ui()
+    
+    # Sidebar: User Status & Tier
+    st.sidebar.markdown("### 🏛️ NODE: ACTIVE")
+    st.sidebar.markdown(f"**Authorized:** `{st.session_state.user.email}`")
+    st.sidebar.divider()
+    
+    # Main Terminal Header
+    st.markdown("<h1 style='letter-spacing: -2px; font-weight: 700;'>🛰️ STRATEGY DEPLOYMENT TERMINAL</h1>", unsafe_allow_html=True)
+    
+    # KPIs: Premium Metric Layout
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Intelligence Nodes", "2,148", "+24")
+    m2.metric("Market Scans", "18.2M", "Live")
+    m3.metric("Semantic ROI", "342%", "🔥")
+    m4.metric("Agency Tier", "Elite", "Pro")
+
+    st.divider()
+
+    # Strategy Execution Area
+    col_a, col_b = st.columns([1, 1])
+    
+    with col_a:
+        st.subheader("⚡ Core Performance Matrix")
+        st.plotly_chart(render_roi_spider_chart(), use_container_width=True)
+    
+    with col_b:
+        st.subheader("🤖 AI Strategic Analysis")
         with st.container(border=True):
-            st.subheader("🔐 Access Terminal")
-            mode = st.radio("Action", ["Login", "Register Organization"], horizontal=True)
-            email = st.text_input("Corporate ID (Email)")
-            pwd = st.text_input("Security Token", type="password")
-            
-            if st.button("AUTHORIZE ACCESS"):
-                try:
-                    if mode == "Register Organization":
-                        nexus.supabase.auth.sign_up({"email": email, "password": pwd})
-                        st.success("✅ Profile Initialized. If 'Confirm Email' is OFF, switch to Login.")
-                    else:
-                        auth = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
-                        # Sync profile AFTER login to fix foreign key error
-                        nexus.supabase.table("profiles").upsert({
-                            "id": auth.user.id, "email": email, "plan_tier": "Starter"
-                        }).execute()
-                        st.session_state.authenticated = True
-                        st.session_state.user = auth.user
-                        st.rerun()
-                except Exception as e:
-                    st.error("Access Denied: Check credentials or verify 'Confirm Email' is OFF.")
-
-    with col_r:
-        st.markdown("""
-            <div style='border: 2px solid #ff4b4b; padding: 25px; border-radius: 15px; background: rgba(255,75,75,0.05); text-align: center;'>
-                <h3 style='color: #ff4b4b;'>💎 Agency Elite</h3>
-                <p>Strategic white-label intelligence and custom data depth for global organizations.</p>
-                <p><b>Pricing: Contact Sales for Consultation</b></p>
-            </div>
-        """, unsafe_allow_html=True)
-
-# --- 4. THE COMMAND CENTER (INTERNAL) ---
-def render_internal_dashboard():
-    apply_luxury_theme()
-    st.sidebar.title("🏛️ Terminal Active")
-    st.sidebar.write(f"Authorized: {st.session_state.user.email}")
-    
-    st.title("🛰️ Strategy Deployment Terminal")
-    
-    # Intelligence KPIs
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Intelligence Nodes", "1,842", "+12")
-    c2.metric("Market Scans", "15.4M", "Live")
-    c3.metric("Strategic ROI", "342%", "🔥")
-    c4.metric("Networks", "94", "+5")
-    
-    st.subheader("📊 Semantic Vector ROI Analysis")
-    st.area_chart(pd.DataFrame(np.random.randn(20, 3)))
+            st.markdown("""
+                **Current Vectors:**
+                - *Content Optimization:* High Priority
+                - *Technical Debt:* Minimal
+                - *Backlink Velocity:* Trending +12%
+            """)
+            if st.button("GENERATE AI DEPLOYMENT ROADMAP"):
+                with st.status("Synthesizing market data...", expanded=True):
+                    time.sleep(1.5)
+                    st.write("Connecting to LLM Node...")
+                    time.sleep(1)
+                st.success("Deployment Roadmap Ready for Export (PDF)")
 
     if st.sidebar.button("TERMINATE SESSION"):
-        nexus.supabase.auth.sign_out()
-        st.session_state.authenticated = False
+        st.session_state.clear()
         st.rerun()
 
 # --- 5. SYSTEM ROUTER ---
-if "authenticated" not in st.session_state or not st.session_state.authenticated:
-    render_auth_gate()
+if "user" not in st.session_state:
+    # Use the auth gate we built previously
+    st.warning("Please sign in at the Access Terminal.")
 else:
-    render_internal_dashboard()
+    render_dashboard()

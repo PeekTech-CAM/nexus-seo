@@ -40,16 +40,17 @@ def render_auth_gate():
         if st.button("AUTHORIZE ACCESS"):
             try:
                 if mode == "Register Organization":
-                    # Sign up with redirect (replace YOUR_DOMAIN with your app URL)
-                    nexus.supabase.auth.sign_up(
-                        {
-                            "email": email,
-                            "password": pwd
-                        },
-                        redirect_to="https://YOUR_DOMAIN"  
+                    # Python SDK sign-up
+                    nexus.supabase.auth.sign_up({
+                        "email": email,
+                        "password": pwd
+                    })
+                    st.success(
+                        "✅ Registration sent. Check your email to confirm account.\n"
+                        "⚠️ Make sure you configured SMTP in Supabase settings."
                     )
-                    st.success("✅ Registration Request Sent. Check your email for confirmation.")
                 else:
+                    # Sign in
                     res = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
                     if res.user:
                         # Upsert user profile
@@ -64,7 +65,7 @@ def render_auth_gate():
                     else:
                         st.error("⚠️ Login failed. Email might not be confirmed yet.")
             except Exception as e:
-                st.error(f"Access Denied: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
     with col_r:
         st.markdown("""
@@ -84,16 +85,18 @@ def render_internal_dashboard():
 
     st.title("🛰️ Strategy Deployment Terminal")
 
+    # Metrics
     c1, c2, c3 = st.columns(3)
     c1.metric("Intelligence Nodes", "1,842", "+12")
     c2.metric("Market Scans", "15.4M", "Live")
     c3.metric("Strategic ROI", "342%", "🔥")
 
+    # Semantic Vector Analysis
     st.subheader("📊 Semantic Vector Analysis")
     chart_data = pd.DataFrame(np.random.randn(20, 3), columns=['SEO', 'UX', 'ROI'])
     st.area_chart(chart_data)
 
-    # Plotly Globe
+    # Plotly Globe Visualization
     fig = go.Figure(go.Scattergeo(
         lat=[-14.23, 31.79, 37.09], lon=[-51.92, -7.09, -95.71],
         mode='markers', marker=dict(size=12, color='#ff4b4b')
@@ -102,6 +105,7 @@ def render_internal_dashboard():
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0, r=0, t=0, b=0), height=500)
     st.plotly_chart(fig, use_container_width=True)
 
+    # Logout
     if st.sidebar.button("TERMINATE SESSION"):
         nexus.supabase.auth.sign_out()
         st.session_state.authenticated = False

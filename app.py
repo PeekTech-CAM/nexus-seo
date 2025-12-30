@@ -32,13 +32,12 @@ class NexusEliteEngine:
         )
         if "GEMINI_KEY" in st.secrets:
             genai.configure(api_key=st.secrets["GEMINI_KEY"])
-            try:
-                # Try the latest production-stable model name
-                self.ai = genai.GenerativeModel('gemini-1.5-flash')
-                # If that fails, the SDK might require the 'models/' prefix
-                # self.ai = genai.GenerativeModel('models/gemini-1.5-flash')
-            except Exception:
-                self.ai = None
+           # Use this exact string to fix the 404 error in image_2dd750.png
+try:
+    # Explicitly use the stable v1 path
+    self.ai = genai.GenerativeModel('gemini-1.5-flash-latest')
+except Exception:
+    self.ai = genai.GenerativeModel('gemini-pro')
 
     def safe_audit(self, prompt):
         if not self.ai:

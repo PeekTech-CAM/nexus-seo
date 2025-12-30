@@ -2,23 +2,24 @@ import streamlit as st
 from supabase import create_client, Client
 import plotly.graph_objects as go
 import pandas as pd
+import numpy as np
 import time
 
-# --- 1. ENTERPRISE SYSTEM CORE ---
-class NexusProductionEngine:
+# --- 1. ENTERPRISE CORE ---
+class NexusEliteEngine:
     def __init__(self):
-        # Using your verified Project API URL
+        # Using your verified API URL
         self.supabase: Client = create_client(
             st.secrets["SUPABASE_URL"], 
             st.secrets["SUPABASE_KEY"]
         )
 
-nexus = NexusProductionEngine()
+nexus = NexusEliteEngine()
 
-# --- 2. ELITE STYLING (OBSIDIAN THEME) ---
+# --- 2. ELITE OBSIDIAN STYLING ---
 st.markdown("""
     <style>
-    .main { background: #050505; color: white; }
+    .main { background-color: #050505; color: white; }
     [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 2px solid #ff4b4b; }
     .stMetric { background: rgba(255, 75, 75, 0.05); border: 1px solid #ff4b4b; padding: 20px; border-radius: 15px; }
     .stButton>button {
@@ -29,11 +30,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. THE AUTHORIZATION GATE (EXTERNAL VIEW) ---
+# --- 3. EXTERNAL VIEW: THE AUTHORIZATION GATE ---
 def render_auth_gate():
     st.markdown("<h1 style='text-align: center;'>🏛️ NEXUS ELITE COMMAND</h1>", unsafe_allow_html=True)
     
-    # 3D Kinetic Globe for visual authority
+    # High-impact Globe visualization
     fig = go.Figure(go.Scattergeo(
         lat=[-14.23, 31.79, 37.09], lon=[-51.92, -7.09, -95.71],
         mode='markers', marker=dict(size=12, color='#ff4b4b')
@@ -53,49 +54,53 @@ def render_auth_gate():
             if st.button("AUTHORIZE ACCESS"):
                 try:
                     if mode == "Register Organization":
+                        # Only sign up; don't touch profiles yet to avoid Foreign Key errors
                         nexus.supabase.auth.sign_up({"email": email, "password": pwd})
-                        st.success("✅ Profile Initialized. Check email to confirm.")
+                        st.success("✅ Registration Request Sent. Check email to activate.")
                     else:
                         res = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
-                        st.session_state.authenticated = True # THIS UNLOCKS THE DASHBOARD
+                        # Handshake successful - create profile on first login
+                        nexus.supabase.table("profiles").upsert({
+                            "id": res.user.id, "email": email, "plan_tier": "Starter"
+                        }).execute()
+                        st.session_state.authenticated = True
                         st.session_state.user = res.user
                         st.rerun()
                 except Exception as e:
-                    st.error(f"Authentication Error: {e}")
+                    st.error(f"Access Denied: Please confirm email first.")
 
     with col_r:
         st.markdown("""
-            <div style='border: 2px solid #ff4b4b; padding: 25px; border-radius: 15px; background: rgba(255,75,75,0.05);'>
+            <div style='border: 2px solid #ff4b4b; padding: 25px; border-radius: 15px; background: rgba(255,75,75,0.05); text-align: center;'>
                 <h3 style='color: #ff4b4b;'>💎 Agency Elite</h3>
-                <p>Strategic white-label intelligence and custom data depth for global organizations.</p>
+                <p>Strategic white-label intelligence for global organizations.</p>
                 <p><b>Pricing: Contact Sales for Consultation</b></p>
+                <button style='width: 100%; background:#ff4b4b; color:white; border:none; padding:10px; border-radius:5px;'>REQUEST PRIVATE ACCESS</button>
             </div>
         """, unsafe_allow_html=True)
 
-# --- 4. THE COMMAND CENTER (INTERNAL VIEW) ---
+# --- 4. INTERNAL VIEW: THE DASHBOARD ---
 def render_internal_dashboard():
     st.sidebar.title("🏛️ Terminal Active")
-    st.sidebar.write(f"Authorized: {st.session_state.user.email}")
+    st.sidebar.write(f"Node: {st.session_state.user.email}")
     
-    st.title("🛰️ Strategy Deployment Node")
+    st.title("🛰️ Strategy Deployment Terminal")
     
-    # Live ROI Intelligence Metrics
     c1, c2, c3 = st.columns(3)
     c1.metric("Intelligence Nodes", "1,842", "+12")
     c2.metric("Market Scans", "15.4M", "Live")
     c3.metric("Strategic ROI", "342%", "🔥")
 
-    # Real-time Data Visualization
-    st.subheader("📊 Semantic Vector ROI Analysis")
-    chart_data = pd.DataFrame(np.random.randn(20, 3), columns=['SEO', 'Authority', 'ROI'])
+    st.subheader("📊 Semantic Vector Analysis")
+    chart_data = pd.DataFrame(np.random.randn(20, 3), columns=['SEO', 'UX', 'ROI'])
     st.area_chart(chart_data)
 
-    if st.sidebar.button("LOGOUT"):
+    if st.sidebar.button("TERMINATE SESSION"):
         nexus.supabase.auth.sign_out()
         st.session_state.authenticated = False
         st.rerun()
 
-# --- 5. THE PRODUCTION ROUTER ---
+# --- 5. SYSTEM ROUTER ---
 if "authenticated" not in st.session_state or not st.session_state.authenticated:
     render_auth_gate()
 else:

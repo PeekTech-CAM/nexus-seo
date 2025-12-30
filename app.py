@@ -34,7 +34,30 @@ class NexusEliteSaaS:
         return res.count if res.count else 0
 
 nexus = NexusEliteSaaS()
+class NexusEliteEngine:
+    def __init__(self):
+        self.supabase: Client = create_client(
+            st.secrets["SUPABASE_URL"], 
+            st.secrets["SUPABASE_KEY"]
+        )
+        if "GEMINI_KEY" in st.secrets:
+            genai.configure(api_key=st.secrets["GEMINI_KEY"])
+            # USE THIS SPECIFIC MODEL NAME FOR STABILITY
+            self.model_name = 'gemini-1.5-flash' # Flash is faster and more widely available
+            try:
+                self.ai = genai.GenerativeModel(self.model_name)
+            except Exception:
+                self.ai = None
 
+    def safe_generate_audit(self, prompt):
+        """Fail-safe AI generation to prevent 'NotFound' crashes."""
+        if not self.ai:
+            return "AI Node Offline: Check API Key or Model Name in Secrets."
+        try:
+            response = self.ai.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            return f"Intelligence Stream Interrupted: {str(e)}"
 # --- 2. ELITE UI ARCHITECTURE ---
 def apply_elite_ui():
     """Renders the obsidian-crimson design system."""

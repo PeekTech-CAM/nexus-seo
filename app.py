@@ -27,7 +27,12 @@ ADMIN_EMAIL = "3dpeektech@gmail.com"
 STRIPE_PAYMENT_LINK_STARTER = "https://buy.stripe.com/your-link"
 STRIPE_CUSTOMER_PORTAL = "https://billing.stripe.com/p/login/your-link"
 GTM_ID = "GTM-KXF6VCFJ"
-
+# Update this inside the class __init__
+try:
+    # 'gemini-1.5-flash' is the definitive production name
+    self.ai = genai.GenerativeModel('gemini-1.5-flash')
+except Exception:
+    st.error("AI Node Connection Failed. Check your Streamlit Secrets.")
 # =============================================================================
 # GOOGLE TAG MANAGER
 # =============================================================================
@@ -198,7 +203,21 @@ def admin():
     st.markdown("## Admin Panel")
     df = pd.DataFrame(nexus.supabase.table("profiles").select("*").execute().data)
     st.dataframe(df)
-
+    
+# Insert this at the top of main()
+query_params = st.query_params
+if query_params.get("payment") == "success":
+    # 1. Update the database for the current user
+    nexus.supabase.table("profiles").update({
+        "plan_tier": "Agency Elite", 
+        "credits": 1000
+    }).eq("id", st.session_state.user.id).execute()
+    
+    # 2. Show a high-authority success message
+    st.balloons()
+    st.success("💳 1,000 CHF TIER ACTIVATED: Terminal Nodes Fully Synchronized.")
+    time.sleep(2)
+    st.rerun()
 # =============================================================================
 # MAIN ROUTER
 # =============================================================================

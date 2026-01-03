@@ -1,16 +1,117 @@
-fpdf2
-streamlit
-firecrawl-py
-google-genai
-supabase
-stripe
-plotly
-pandas
-fpdf
-streamlit-extras
-streamlit-lottie
-google-generativeai
-numpy
-beautifulsoup4
-requests
+# ============================================================================
+# NEXUS SEO INTELLIGENCE - Production Dependencies
+# ============================================================================
+# Python 3.11+
+# Last updated: 2025-01-03
 
+# ============================================================================
+# CORE FRAMEWORK
+# ============================================================================
+streamlit==1.39.0                # Web application framework
+flask==3.0.0                     # Webhook server
+gunicorn==21.2.0                # Production WSGI server
+
+# ============================================================================
+# DATABASE & AUTHENTICATION
+# ============================================================================
+supabase==2.3.0                 # Supabase client
+psycopg2-binary==2.9.9          # PostgreSQL adapter
+python-dotenv==1.0.0            # Environment variable management
+
+# ============================================================================
+# PAYMENT PROCESSING
+# ============================================================================
+stripe==7.9.0                   # Stripe API client
+
+# ============================================================================
+# AI & MACHINE LEARNING
+# ============================================================================
+google-generativeai==0.3.2      # Google Gemini API
+openai==1.6.0                   # OpenAI API (optional fallback)
+
+# ============================================================================
+# WEB SCRAPING & SEO
+# ============================================================================
+requests==2.31.0                # HTTP client
+beautifulsoup4==4.12.2          # HTML parsing
+lxml==4.9.3                     # XML/HTML parser
+validators==0.22.0              # URL validation
+urllib3==2.1.0                  # HTTP library
+
+# ============================================================================
+# DATA PROCESSING
+# ============================================================================
+pandas==2.1.4                   # Data manipulation
+numpy==1.26.2                   # Numerical computing
+python-dateutil==2.8.2          # Date utilities
+
+# ============================================================================
+# SECURITY
+# ============================================================================
+bleach==6.1.0                   # HTML sanitization
+cryptography==41.0.7            # Cryptographic operations
+pyjwt==2.8.0                    # JWT handling
+
+# ============================================================================
+# MONITORING & LOGGING
+# ============================================================================
+sentry-sdk==1.39.2              # Error tracking
+python-json-logger==2.0.7       # JSON logging
+
+# ============================================================================
+# RATE LIMITING & CACHING
+# ============================================================================
+flask-limiter==3.5.0            # Rate limiting
+redis==5.0.1                    # Redis client (optional)
+
+# ============================================================================
+# PDF & REPORT GENERATION
+# ============================================================================
+reportlab==4.0.8                # PDF generation
+matplotlib==3.8.2               # Charts and graphs
+pillow==10.1.0                  # Image processing
+
+# ============================================================================
+# EMAIL
+# ============================================================================
+sendgrid==6.11.0                # Email service
+
+# ============================================================================
+# TESTING (Development only)
+# ============================================================================
+pytest==7.4.3                   # Testing framework
+pytest-cov==4.1.0               # Coverage reporting
+pytest-mock==3.12.0             # Mocking
+black==23.12.1                  # Code formatting
+flake8==6.1.0                   # Linting
+mypy==1.7.1                     # Type checking
+
+# ============================================================================
+# DEVELOPMENT TOOLS
+# ============================================================================
+ipython==8.19.0                 # Enhanced Python shell
+watchdog==3.0.0                 # File system monitoring
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+python-slugify==8.0.1           # String slugification
+tqdm==4.66.1                    # Progress bars
+click==8.1.7                    # CLI creation
+
+# ============================================================================
+# PRODUCTION DEPLOYMENT
+# ============================================================================
+mangum==0.17.0                  # AWS Lambda adapter
+uvicorn==0.25.0                 # ASGI server
+fastapi==0.108.0                # Alternative API framework (optional)
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# - Pin versions for reproducibility
+# - Update quarterly or when security patches released
+# - Test in staging before updating production
+# - Use virtual environment: python -m venv venv
+# - Install: pip install -r requirements.txt
+# - Freeze: pip freeze > requirements-lock.txt

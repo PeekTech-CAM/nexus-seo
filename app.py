@@ -2,14 +2,10 @@ import streamlit as st
 from supabase import create_client
 import google.generativeai as genai
 import pandas as pd
-import numpy as np
-import plotly.express as px
-from datetime import datetime
 import time
 import requests
 from bs4 import BeautifulSoup
 import streamlit.components.v1 as components
-import json
 
 # =============================================================================
 # PAGE CONFIG
@@ -27,12 +23,7 @@ ADMIN_EMAIL = "3dpeektech@gmail.com"
 STRIPE_PAYMENT_LINK_STARTER = "https://buy.stripe.com/your-link"
 STRIPE_CUSTOMER_PORTAL = "https://billing.stripe.com/p/login/your-link"
 GTM_ID = "GTM-KXF6VCFJ"
-# Update this inside the class __init__
-try:
-    # 'gemini-1.5-flash' is the definitive production name
-    self.ai = genai.GenerativeModel('gemini-1.5-flash')
-except Exception:
-    st.error("AI Node Connection Failed. Check your Streamlit Secrets.")
+
 # =============================================================================
 # GOOGLE TAG MANAGER
 # =============================================================================
@@ -65,7 +56,8 @@ class NexusEliteEngine:
                 st.secrets["SUPABASE_URL"],
                 st.secrets["SUPABASE_KEY"]
             )
-        except:
+        except Exception as e:
+            st.error("Supabase connection failed")
             return None
 
     def _init_ai(self):
@@ -76,25 +68,45 @@ class NexusEliteEngine:
             return None
 
     def scrape(self, url):
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=15)
-        soup = BeautifulSoup(r.text, "html.parser")
+        try:
+            headers = {"User-Agent": "Mozilla/5.0"}
+            r = requests.get(url, headers=headers, timeout=15)
+            r.raise_for_status()
 
-        text = soup.get_text(" ", strip=True)
+            soup = BeautifulSoup(r.text, "html.parser")
+            text = soup.get_text(" ", strip=True)
 
-        return {
-            "url": url,
-            "load_time": r.elapsed.total_seconds(),
-            "title": soup.title.text if soup.title else "",
-            "meta_description": soup.find("meta", {"name": "description"})["content"]
-                if soup.find("meta", {"name": "description"}) else "",
-            "h1": len(soup.find_all("h1")),
-            "h2": len(soup.find_all("h2")),
-            "images": len(soup.find_all("img")),
-            "images_no_alt": len([i for i in soup.find_all("img") if not i.get("alt")]),
-            "words": len(text.split()),
-            "sample": text[:3000]
-        }
+            return {
+                "url": url,
+                "load_time": r.elapsed.total_seconds(),
+                "title": soup.title.text if soup.title else "",
+                "meta_description": (
+                    soup.find("meta", {"name": "description"})["content"]
+                    if soup.find("meta", {"name": "description"}) else ""
+                ),
+                "h1": len(soup.find_all("h1")),
+                "h2": len(soup.find_all("h2")),
+                "images": len(soup.find_all("img")),
+                "images_no_alt": len(
+                    [i for i in soup.find_all("img") if not i.get("alt")]
+                ),
+                "words": len(text.split()),
+                "sample": text[:3000]
+            }
+        except Exception as e:
+            return {
+                "url": url,
+                "error": str(e),
+                "load_time": 0,
+                "title": "",
+                "meta_description": "",
+                "h1": 0,
+                "h2": 0,
+                "images": 0,
+                "images_no_alt": 0,
+                "words": 0,
+                "sample": ""
+            }
 
     def seo_score(self, d):
         score = 100
@@ -105,34 +117,50 @@ class NexusEliteEngine:
         if not d["meta_description"]:
             score -= 10; issues.append("❌ Missing meta description")
         if d["h1"] == 0:
-            score -= 15; issues.append("❌ No H1")
+            score -= 15; issues.append("❌ No H1 tag")
         if d["words"] < 300:
             score -= 15; issues.append("❌ Thin content")
         if d["images_no_alt"] > 0:
-            score -= 10; issues.append("⚠️ Images without ALT")
+            score -= 10; issues.append("⚠️ Images missing ALT")
         if d["load_time"] > 3:
-            score -= 10; issues.append("❌ Slow load")
+            score -= 10; issues.append("❌ Slow page load")
 
         return max(0, score), issues
 
     def ai_analysis(self, d):
         if not self.ai:
-            return "AI unavailable"
-        prompt = f"""
-SEO audit:
-Title: {d['title']}
-Words: {d['words']}
-Load: {d['load_time']}
-Issues: {d['images_no_alt']} images missing alt
+            return "AI unavailable."
 
-Give improvements + 30-day SEO plan + ROI
+        profile = st.session_state.profile
+        if profile["credits"] <= 0:
+            return "⚠️ No credits remaining. Please upgrade."
+
+        self.supabase.table("profiles").update({
+            "credits": profile["credits"] - 1
+        }).eq("id", st.session_state.user.id).execute()
+
+        st.session_state.profile["credits"] -= 1
+
+        prompt = f"""
+SEO Audit Report
+
+Title: {d['title']}
+Word Count: {d['words']}
+Load Time: {d['load_time']}s
+Images missing ALT: {d['images_no_alt']}
+
+Provide:
+1. Priority SEO fixes
+2. 30-day action plan
+3. Estimated ROI impact
 """
+
         return self.ai.generate_content(prompt).text
 
 nexus = NexusEliteEngine()
 
 # =============================================================================
-# SESSION
+# SESSION STATE
 # =============================================================================
 for k in ["auth", "user", "profile"]:
     if k not in st.session_state:
@@ -142,26 +170,46 @@ for k in ["auth", "user", "profile"]:
 # AUTH
 # =============================================================================
 def login(email, pwd):
-    r = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
-    st.session_state.user = r.user
-    st.session_state.profile = nexus.supabase.table("profiles").select("*").eq("id", r.user.id).single().execute().data
-    st.session_state.auth = True
+    try:
+        r = nexus.supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": pwd
+        })
+        st.session_state.user = r.user
+        st.session_state.profile = (
+            nexus.supabase
+            .table("profiles")
+            .select("*")
+            .eq("id", r.user.id)
+            .single()
+            .execute()
+            .data
+        )
+        st.session_state.auth = True
+    except:
+        st.error("Invalid login credentials")
 
 def register(email, pwd):
-    r = nexus.supabase.auth.sign_up({"email": email, "password": pwd})
-    nexus.supabase.table("profiles").insert({
-        "id": r.user.id,
-        "email": email,
-        "plan_tier": "Demo",
-        "credits": 1
-    }).execute()
-    login(email, pwd)
+    try:
+        r = nexus.supabase.auth.sign_up({
+            "email": email,
+            "password": pwd
+        })
+        nexus.supabase.table("profiles").insert({
+            "id": r.user.id,
+            "email": email,
+            "plan_tier": "Demo",
+            "credits": 1
+        }).execute()
+        login(email, pwd)
+    except:
+        st.error("Registration failed")
 
 # =============================================================================
 # UI PAGES
 # =============================================================================
 def landing():
-    st.markdown("# 🚀 NEXUS SEO")
+    st.markdown("# 🚀 NEXUS SEO Intelligence")
     t1, t2 = st.tabs(["Login", "Free Trial"])
 
     with t1:
@@ -174,50 +222,65 @@ def landing():
     with t2:
         e = st.text_input("Email", key="r1")
         p = st.text_input("Password", type="password", key="r2")
-        if st.button("Start Free"):
+        if st.button("Start Free Trial"):
             register(e, p)
             st.rerun()
 
 def demo():
     st.sidebar.metric("Credits", st.session_state.profile["credits"])
     url = st.text_input("Website URL")
+
     if st.button("Run Demo Scan"):
         d = nexus.scrape(url)
         s, i = nexus.seo_score(d)
         st.metric("SEO Score", s)
-        for x in i: st.write(x)
+        for x in i:
+            st.write(x)
 
 def client():
-    url = st.text_input("Website")
-    if st.button("Deep Scan"):
+    st.sidebar.metric("Credits", st.session_state.profile["credits"])
+    url = st.text_input("Website URL")
+
+    if st.button("Run Deep Scan"):
         d = nexus.scrape(url)
         s, i = nexus.seo_score(d)
         ai = nexus.ai_analysis(d)
 
         st.metric("SEO Score", s)
-        st.write(i)
-        st.markdown("### AI Report")
+        for x in i:
+            st.write(x)
+
+        st.markdown("### 🤖 AI SEO Report")
         st.write(ai)
 
 def admin():
     st.markdown("## Admin Panel")
-    df = pd.DataFrame(nexus.supabase.table("profiles").select("*").execute().data)
+    df = pd.DataFrame(
+        nexus.supabase.table("profiles").select("*").execute().data
+    )
     st.dataframe(df)
-    
-# Insert this at the top of main()
+
+# =============================================================================
+# PAYMENT CALLBACK
+# =============================================================================
 query_params = st.query_params
-if query_params.get("payment") == "success":
-    # 1. Update the database for the current user
+if (
+    query_params.get("payment") == "success"
+    and st.session_state.get("user")
+):
     nexus.supabase.table("profiles").update({
-        "plan_tier": "Agency Elite", 
+        "plan_tier": "Agency Elite",
         "credits": 1000
     }).eq("id", st.session_state.user.id).execute()
-    
-    # 2. Show a high-authority success message
+
+    st.session_state.profile["plan_tier"] = "Agency Elite"
+    st.session_state.profile["credits"] = 1000
+
     st.balloons()
-    st.success("💳 1,000 CHF TIER ACTIVATED: Terminal Nodes Fully Synchronized.")
+    st.success("💳 AGENCY ELITE ACTIVATED — 1,000 CREDITS LOADED")
     time.sleep(2)
     st.rerun()
+
 # =============================================================================
 # MAIN ROUTER
 # =============================================================================

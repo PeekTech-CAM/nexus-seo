@@ -71,33 +71,32 @@ def render_dashboard():
     apply_elite_ui()
     profile = nexus.sync_profile(st.session_state.user.id)
     
-    st.sidebar.markdown(f"### 🛡️ {profile['plan_tier']}")
-    st.sidebar.metric("Credits", profile['credits'])
-
-    st.markdown("## 🛰️ Strategy Deployment Terminal")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Intel Nodes", "2,148", "+24")
-    c2.metric("Market Scans", "18.2M", "Live")
-    c3.metric("Semantic ROI", "342%", "🔥")
-    c4.metric("Networks", "94", "+5")
+    # 🛰️ HEADER METRICS (Elite Only)
+    if profile['plan_tier'] == "Agency Elite":
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Intel Nodes", "2,148", "+24")
+        c2.metric("Market Scans", "18.2M", "Live")
+        c3.metric("Semantic ROI", "342%", "🔥")
+        c4.metric("Networks", "94", "+5")
+    else:
+        st.warning("📊 DEMO MODE: Upgrade to Agency Elite for Full Market Intelligence.")
 
     st.divider()
 
-    target_url = st.text_input("Enter Target Domain Node", placeholder="apple.com")
-    if st.button("EXECUTE DEEP SCAN"):
+    # 🤖 SCAN LOGIC
+    target_url = st.text_input("Enter Target Domain", placeholder="apple.com")
+    
+    if st.button("EXECUTE SCAN"):
         if profile['credits'] > 0:
-            with st.status("Analyzing Vectors..."):
-                report = nexus.run_semantic_audit(target_url)
+            with st.status("Analyzing..."):
+                # Pro gets Deep Audit, Demo gets Summary
+                is_pro = (profile['plan_tier'] == "Agency Elite")
+                report = nexus.run_audit(target_url, deep_scan=is_pro)
+                
+                # Deduct Credit
                 nexus.supabase.table("profiles").update({"credits": profile['credits'] - 1}).eq("id", st.session_state.user.id).execute()
                 st.session_state.last_report = report
             st.rerun()
-        else:
-            st.error("Insufficient Credits. Upgrade to Agency Elite (1,000 CHF).")
-
-    if "last_report" in st.session_state:
-        st.markdown("### 🤖 Intelligence Stream")
-        st.info(st.session_state.last_report)
-        st.download_button("📥 DOWNLOAD AUDIT", st.session_state.last_report, file_name="Nexus_Audit.txt")
 
 # =============================================================================
 # 4. MAIN ENTRY & PAYMENT LOGIC

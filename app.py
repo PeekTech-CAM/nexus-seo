@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 import streamlit.components.v1 as components
 
 # =============================================================================
-# 1. PAGE & ELITE UI CONFIG
+# 1. ELITE UI CONFIG
 # =============================================================================
 st.set_page_config(page_title="NEXUS ELITE TERMINAL", page_icon="🛰️", layout="wide")
 
@@ -36,23 +36,24 @@ class NexusEliteEngine:
     def __init__(self):
         self.supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
         genai.configure(api_key=st.secrets["GEMINI_KEY"])
-        # Fix: Using the definitive production model name
         self.ai = genai.GenerativeModel("gemini-1.5-flash-latest")
 
     def sync_profile(self, user_id):
         return self.supabase.table("profiles").select("*").eq("id", user_id).single().execute().data
 
     def run_semantic_audit(self, url):
-        # Scrape logic
+        # PROTOCOL FIXER
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+            
         headers = {"User-Agent": "Mozilla/5.0"}
         r = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(r.text, "html.parser")
         
-        # AI Generation
-        prompt = f"Perform an elite SEO audit for {url} based on this content: {soup.get_text()[:2000]}"
+        prompt = f"Perform an elite SEO audit for {url} based on this content: {soup.get_text()[:3000]}"
         response = self.ai.generate_content(prompt)
         
-        # Log to History
+        # Log to Supabase Audit History
         self.supabase.table("audit_history").insert({
             "user_id": st.session_state.user.id,
             "target": url,
@@ -64,34 +65,14 @@ class NexusEliteEngine:
 nexus = NexusEliteEngine()
 
 # =============================================================================
-# 3. ROUTER & PAGES
+# 3. DASHBOARD COMPONENTS
 # =============================================================================
-def render_login():
-    apply_elite_ui()
-    st.title("🏛️ NEXUS ELITE ACCESS")
-    tab1, tab2 = st.tabs(["Authorize", "New Node (Trial)"])
-    
-    with tab1:
-        email = st.text_input("Corporate ID")
-        pwd = st.text_input("Security Token", type="password")
-        if st.button("SIGN IN"):
-            res = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
-            st.session_state.user = res.user
-            st.rerun()
-            
-    with tab2:
-        st.info("Demo Node: 1 Free Credit. No Credit Card Required.")
-        # Link to your registration logic or a simple sign-up form
-
 def render_dashboard():
     apply_elite_ui()
     profile = nexus.sync_profile(st.session_state.user.id)
     
-    # Sidebar Credits & Tier
     st.sidebar.markdown(f"### 🛡️ {profile['plan_tier']}")
     st.sidebar.metric("Credits", profile['credits'])
-    if profile['plan_tier'] == "Demo":
-        st.sidebar.link_button("🚀 UPGRADE TO PRO", "https://buy.stripe.com/your-1000-chf-link")
 
     st.markdown("## 🛰️ Strategy Deployment Terminal")
     c1, c2, c3, c4 = st.columns(4)
@@ -102,28 +83,27 @@ def render_dashboard():
 
     st.divider()
 
-    target_url = st.text_input("Enter Target Domain Node", placeholder="https://apple.com")
+    target_url = st.text_input("Enter Target Domain Node", placeholder="apple.com")
     if st.button("EXECUTE DEEP SCAN"):
         if profile['credits'] > 0:
             with st.status("Analyzing Vectors..."):
                 report = nexus.run_semantic_audit(target_url)
-                # Decrement credit
                 nexus.supabase.table("profiles").update({"credits": profile['credits'] - 1}).eq("id", st.session_state.user.id).execute()
                 st.session_state.last_report = report
             st.rerun()
         else:
-            st.error("Insufficient Credits. Upgrade to Agency Elite.")
+            st.error("Insufficient Credits. Upgrade to Agency Elite (1,000 CHF).")
 
     if "last_report" in st.session_state:
         st.markdown("### 🤖 Intelligence Stream")
         st.info(st.session_state.last_report)
-        st.download_button("📥 DOWNLOAD AUDIT", st.session_state.last_report, file_name="Nexus_Elite_Audit.txt")
+        st.download_button("📥 DOWNLOAD AUDIT", st.session_state.last_report, file_name="Nexus_Audit.txt")
 
 # =============================================================================
 # 4. MAIN ENTRY & PAYMENT LOGIC
 # =============================================================================
 def main():
-    # Detect Stripe Redirect
+    # Detect Stripe Payment Success
     if st.query_params.get("payment") == "success" and "user" in st.session_state:
         nexus.supabase.table("profiles").update({"plan_tier": "Agency Elite", "credits": 1000}).eq("id", st.session_state.user.id).execute()
         st.balloons()
@@ -132,7 +112,14 @@ def main():
         st.rerun()
 
     if "user" not in st.session_state:
-        render_login()
+        # (Insert your login/landing code here)
+        st.title("🏛️ NEXUS ELITE ACCESS")
+        email = st.text_input("Corporate ID")
+        pwd = st.text_input("Security Token", type="password")
+        if st.button("SIGN IN"):
+            res = nexus.supabase.auth.sign_in_with_password({"email": email, "password": pwd})
+            st.session_state.user = res.user
+            st.rerun()
     else:
         render_dashboard()
 

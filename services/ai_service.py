@@ -9,41 +9,29 @@ class AIAnalysisService:
     Incluye sistema de 'fallback' automático para manejar errores de modelos.
     """
     
-    def __init__(self):
-        """Inicializa la API de Gemini con selección robusta de modelos"""
+    ddef __init__(self):
+    """Initialize Gemini API with working model"""
+    self.model = None
+    self.model_name = None
+    
+    try:
+        # Get API Key
+        api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            print("❌ Error: GOOGLE_API_KEY not found")
+            return
+        
+        # Configure Gemini
+        genai.configure(api_key=api_key)
+        
+        # Use gemini-1.5-flash (latest working model)
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model_name = 'gemini-1.5-flash'
+        print(f"✅ AI Service connected using model '{self.model_name}'")
+        
+    except Exception as e:
+        print(f"❌ AI initialization error: {str(e)}")
         self.model = None
-        try:
-            # 1. Obtener API Key de secrets o variables de entorno
-            api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
-            
-            if not api_key:
-                print("❌ Error: No se encontró GOOGLE_API_KEY")
-                return
-            
-            genai.configure(api_key=api_key)
-            
-            # 2. Lista de modelos a probar en orden de prioridad
-            # Flash es más rápido y barato. Pro es más potente. El último es legacy.
-            models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
-            
-            for model_name in models_to_try:
-                try:
-                    # Prueba de conexión (sin generar coste, solo instanciación)
-                    test_model = genai.GenerativeModel(model_name)
-                    self.model = test_model
-                    self.model_name = model_name
-                    print(f"✅ ÉXITO: AI Service conectado usando modelo '{model_name}'")
-                    break
-                except Exception as e:
-                    print(f"⚠️ Aviso: El modelo '{model_name}' falló o no está disponible: {e}")
-                    continue
-            
-            if not self.model:
-                print("❌ ERROR CRÍTICO: Ningún modelo de Gemini pudo inicializarse.")
-                
-        except Exception as e:
-            print(f"❌ Error fatal en inicialización de AI: {str(e)}")
-            self.model = None
     
     def analyze_seo_scan(self, scan_data: Dict) -> Optional[str]:
         """Genera recomendaciones SEO basadas en los datos del escaneo"""

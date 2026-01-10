@@ -1,11 +1,18 @@
-﻿streamlit
-supabase
-stripe
-google-generativeai
-python-dotenv
-beautifulsoup4
-lxml
-requests
-reportlab
-plotly
-flask
+﻿# Core Dependencies
+streamlit>=1.31.0
+supabase>=2.3.0
+python-dotenv>=1.0.0
+
+# Web Scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# AI/ML
+google-generativeai>=0.3.0
+
+# Data Processing
+pandas>=2.0.0
+
+# Optional: For better performance
+httpx>=0.25.0

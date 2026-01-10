@@ -19,7 +19,7 @@ class AIAnalysisService:
                 raise ValueError("Google API key not found")
             
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-pro')
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
         except Exception as e:
             print(f"AI Service initialization error: {str(e)}")
             self.model = None

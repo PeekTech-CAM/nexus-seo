@@ -1,42 +1,44 @@
+"""
+AI Service for SEO Analysis
+Clean, working version with gemini-1.5-flash
+"""
+
 import google.generativeai as genai
 import os
 import streamlit as st
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 class AIAnalysisService:
-    """
-    Servicio de análisis SEO con IA utilizando Google Gemini.
-    Incluye sistema de 'fallback' automático para manejar errores de modelos.
-    """
+    """Handle AI-powered SEO analysis using Google Gemini"""
     
-    ddef __init__(self):
-    """Initialize Gemini API with working model"""
-    self.model = None
-    self.model_name = None
-    
-    try:
-        # Get API Key
-        api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            print("❌ Error: GOOGLE_API_KEY not found")
-            return
-        
-        # Configure Gemini
-        genai.configure(api_key=api_key)
-        
-        # Use gemini-1.5-flash (latest working model)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
-        self.model_name = 'gemini-1.5-flash'
-        print(f"✅ AI Service connected using model '{self.model_name}'")
-        
-    except Exception as e:
-        print(f"❌ AI initialization error: {str(e)}")
+    def __init__(self):
+        """Initialize Gemini API"""
         self.model = None
+        self.model_name = None
+        
+        try:
+            # Get API Key
+            api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                print("❌ Error: GOOGLE_API_KEY not found")
+                return
+            
+            # Configure Gemini
+            genai.configure(api_key=api_key)
+            
+            # Use gemini-1.5-flash (latest working model)
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            self.model_name = 'gemini-1.5-flash'
+            print(f"✅ AI Service connected using model '{self.model_name}'")
+            
+        except Exception as e:
+            print(f"❌ AI initialization error: {str(e)}")
+            self.model = None
     
     def analyze_seo_scan(self, scan_data: Dict) -> Optional[str]:
-        """Genera recomendaciones SEO basadas en los datos del escaneo"""
+        """Generate AI-powered SEO recommendations"""
         if not self.model:
-            return "⚠️ El servicio de IA no está disponible. Revisa la configuración de la API Key."
+            return None
         
         try:
             prompt = self._create_analysis_prompt(scan_data)
@@ -44,106 +46,62 @@ class AIAnalysisService:
             return response.text
             
         except Exception as e:
-            error_msg = str(e)
-            print(f"❌ Error generando análisis SEO: {error_msg}")
-            if "404" in error_msg:
-                return "Error 404 de Google API. Por favor actualiza la librería: pip install -U google-generativeai"
-            return "No se pudo generar el análisis debido a un error del servicio de IA."
-
-    def generate_content_ideas(self, keyword: str, industry: str) -> Optional[str]:
-        """Genera ideas de contenido para el blog"""
-        if not self.model:
+            print(f"AI analysis error: {str(e)}")
             return None
-        
-        try:
-            prompt = f"""
-            Actúa como un estratega de contenido SEO experto.
-            Genera 5 ideas de artículos de blog atractivos para:
-            
-            Palabra clave: {keyword}
-            Industria: {industry}
-            
-            Para cada idea incluye:
-            - Título (H2)
-            - Breve descripción
-            - Intención de búsqueda (Informativa/Transaccional)
-            """
-            response = self.model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            print(f"❌ Error generando ideas de contenido: {str(e)}")
-            return None
-
-    def analyze_competitor(self, your_url: str, competitor_url: str, your_scan: Dict, competitor_scan: Dict) -> Optional[str]:
-        """Compara tu sitio con el de un competidor"""
-        if not self.model:
-            return None
-            
-        try:
-            prompt = f"""
-            Compara estos dos sitios web desde una perspectiva SEO técnica y de contenido:
-            
-            MI SITIO ({your_url}):
-            - Puntuación Global: {your_scan.get('overall_score', 0)}
-            
-            COMPETIDOR ({competitor_url}):
-            - Puntuación Global: {competitor_scan.get('overall_score', 0)}
-            
-            Dame 3 acciones concretas para superar al competidor.
-            """
-            response = self.model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            print(f"❌ Error en análisis de competencia: {str(e)}")
-            return None
-
+    
     def _create_analysis_prompt(self, scan_data: Dict) -> str:
-        """Crea el prompt detallado para el análisis principal"""
-        url = scan_data.get('url', 'URL Desconocida')
-        score = scan_data.get('overall_score', 0)
+        """Create a detailed prompt for AI analysis"""
         
-        # Extracción segura de problemas
-        issues_data = scan_data.get('issues_detail', {})
-        critical = issues_data.get('critical', []) if isinstance(issues_data, dict) else []
+        url = scan_data.get('url', 'Unknown')
+        overall_score = scan_data.get('overall_score', 0)
+        technical_score = scan_data.get('technical_score', 0)
+        content_score = scan_data.get('content_score', 0)
         
-        # Formatear lista de problemas para el prompt
-        critical_text = "\n".join([f"- {i}" for i in critical[:5]]) if critical else "Ninguno detectado"
+        issues = scan_data.get('issues_detail', {})
+        critical_issues = issues.get('critical', [])
+        high_issues = issues.get('high', [])
         
-        return f"""
-        Eres un consultor SEO Senior. Analiza los siguientes datos de auditoría web:
-        
-        Sitio Web: {url}
-        Puntuación SEO: {score}/100
-        
-        Problemas Críticos Detectados:
-        {critical_text}
-        
-        Por favor proporciona un informe ejecutivo que incluya:
-        1. 🚦 Resumen del estado de salud del sitio (2 líneas)
-        2. 🔧 Top 3 Prioridades Técnicas a arreglar hoy mismo
-        3. 🚀 Estrategia rápida de contenido ("Quick Wins")
-        
-        Usa formato Markdown profesional. Sé conciso y directo.
-        """
+        prompt = f"""
+You are an expert SEO consultant. Analyze this website audit and provide actionable recommendations.
 
-# --- Singleton Pattern ---
-_ai_service_instance = None
+WEBSITE: {url}
+OVERALL SCORE: {overall_score}/100
+TECHNICAL: {technical_score}/100
+CONTENT: {content_score}/100
 
-def get_ai_service() -> AIAnalysisService:
-    """Devuelve una instancia única del servicio para no reconectar constantemente"""
-    global _ai_service_instance
-    if _ai_service_instance is None:
-        _ai_service_instance = AIAnalysisService()
-    return _ai_service_instance
+CRITICAL ISSUES:
+{self._format_issues(critical_issues)}
 
-# --- Funciones Puente (Bridge Functions) para compatibilidad ---
-# Estas funciones permiten que el resto de tu app llame al servicio sin cambiar código
+HIGH PRIORITY:
+{self._format_issues(high_issues)}
+
+Provide:
+1. Executive Summary (2-3 sentences)
+2. Top 3 Priority Actions
+3. Quick Wins (easy improvements)
+
+Keep it concise and actionable. Use emojis.
+"""
+        return prompt
+    
+    def _format_issues(self, issues: list) -> str:
+        """Format issues list"""
+        if not issues:
+            return "None detected"
+        return "\n".join([f"- {issue}" for issue in issues[:5]])
+
+
+# Global instance
+_ai_service = None
+
+def get_ai_service():
+    """Get or create AI service singleton"""
+    global _ai_service
+    if _ai_service is None:
+        _ai_service = AIAnalysisService()
+    return _ai_service
 
 def analyze_seo_with_ai(scan_data: Dict) -> Optional[str]:
-    return get_ai_service().analyze_seo_scan(scan_data)
-
-def generate_content_ideas_ai(keyword: str, industry: str) -> Optional[str]:
-    return get_ai_service().generate_content_ideas(keyword, industry)
-
-def compare_with_competitor_ai(your_url: str, competitor_url: str, your_scan: Dict, competitor_scan: Dict) -> Optional[str]:
-    return get_ai_service().analyze_competitor(your_url, competitor_url, your_scan, competitor_scan)
+    """Quick function to analyze SEO scan"""
+    service = get_ai_service()
+    return service.analyze_seo_scan(scan_data)

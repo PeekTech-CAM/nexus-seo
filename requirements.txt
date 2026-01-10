@@ -1,0 +1,11 @@
+﻿streamlit
+supabase
+stripe
+google-generativeai
+python-dotenv
+beautifulsoup4
+lxml
+requests
+reportlab
+plotly
+flask

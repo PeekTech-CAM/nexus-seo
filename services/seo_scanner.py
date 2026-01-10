@@ -1,328 +1,553 @@
 """
-SEO Scanner Service - Simplified Version
-Compatible with existing database schema
+NEXUS SEO INTELLIGENCE - Smart SEO Scanner Module
+Advanced AI-Powered Website Analysis System
 """
 
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse
+import os
+import json
 import time
-from typing import Tuple, Optional, Dict, List
+import requests
+from datetime import datetime
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse, urljoin
+import google.generativeai as genai
 
-class SEOScanner:
-    """Simple SEO scanner compatible with existing database schema"""
+class SmartSEOScanner:
+    """
+    Advanced SEO Scanner with AI-powered analysis
+    Features: Multi-agent AI system, competitive intelligence, action plans
+    """
     
-    def __init__(self, supabase_client):
-        """Initialize with Supabase client"""
-        self.supabase = supabase_client
-        self.timeout = 15
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-        }
-    
-    def scan_url(self, user_id: str, url: str) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Scan a URL and store results
+    def __init__(self, gemini_api_key=None):
+        """Initialize the scanner with AI capabilities"""
+        self.gemini_api_key = gemini_api_key or os.getenv('GEMINI_API_KEY')
         
-        Returns:
-            Tuple of (scan_id, error_message)
+        if self.gemini_api_key:
+            genai.configure(api_key=self.gemini_api_key)
+            self.ai_model = genai.GenerativeModel('gemini-1.5-pro')
+        else:
+            self.ai_model = None
+            print("⚠️ Warning: Gemini API key not found. AI features will be disabled.")
+    
+    def scan_website(self, url, include_ai=True):
         """
+        Perform comprehensive website scan
+        
+        Args:
+            url (str): Website URL to scan
+            include_ai (bool): Whether to include AI analysis
+            
+        Returns:
+            dict: Complete scan results with AI insights
+        """
+        print(f"🔍 Starting scan for: {url}")
+        
+        # Step 1: Scrape basic data
+        scan_data = self._scrape_website(url)
+        
+        if not scan_data:
+            return {"error": "Failed to scrape website"}
+        
+        # Step 2: Technical analysis
+        technical_analysis = self._analyze_technical(scan_data)
+        
+        # Step 3: Content analysis
+        content_analysis = self._analyze_content(scan_data)
+        
+        # Step 4: AI-powered insights (if enabled)
+        if include_ai and self.ai_model:
+            print("🧠 Running AI analysis...")
+            
+            ai_insights = {
+                'technical_ai': self._ai_technical_analysis(scan_data),
+                'content_ai': self._ai_content_analysis(scan_data),
+                'competitive_ai': self._ai_competitive_analysis(scan_data),
+                'action_plan': self._ai_generate_action_plan(scan_data)
+            }
+        else:
+            ai_insights = {}
+        
+        # Combine all results
+        result = {
+            'url': url,
+            'scan_timestamp': datetime.now().isoformat(),
+            'basic_data': scan_data,
+            'technical_analysis': technical_analysis,
+            'content_analysis': content_analysis,
+            'ai_insights': ai_insights,
+            'overall_score': self._calculate_overall_score(technical_analysis, content_analysis)
+        }
+        
+        print("✅ Scan completed!")
+        return result
+    
+    def _scrape_website(self, url):
+        """Scrape website and extract data"""
         try:
             # Normalize URL
-            url = self._normalize_url(url)
+            if not url.startswith('http'):
+                url = 'https://' + url
             
-            # Parse domain
-            parsed = urlparse(url)
-            domain = parsed.netloc or parsed.path
-            
-            print(f"🔍 Scanning: {url}")
-            
-            # Fetch page
+            # Fetch website
             start_time = time.time()
-            response = requests.get(
-                url, 
-                headers=self.headers, 
-                timeout=self.timeout,
-                allow_redirects=True,
-                verify=True
-            )
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
             load_time = int((time.time() - start_time) * 1000)
             
             if response.status_code != 200:
-                return None, f"HTTP {response.status_code} - Page not accessible"
+                print(f"⚠️ Warning: Status code {response.status_code}")
             
             # Parse HTML
             soup = BeautifulSoup(response.content, 'html.parser')
             
-            # Extract data
-            seo_data = self._extract_seo_data(soup, url)
-            seo_data['load_time_ms'] = load_time
-            seo_data['http_status'] = response.status_code
-            seo_data['page_size_kb'] = len(response.content) // 1024
-            seo_data['has_ssl'] = url.startswith('https://')
+            # Extract metadata
+            title = soup.find('title')
+            title = title.text.strip() if title else ''
             
-            # Calculate scores
-            scores = self._calculate_scores(seo_data)
+            description = ''
+            meta_desc = soup.find('meta', attrs={'name': 'description'})
+            if meta_desc:
+                description = meta_desc.get('content', '').strip()
             
-            # Identify issues
-            issues = self._identify_issues(seo_data)
+            # Extract content metrics
+            text_content = soup.get_text()
+            word_count = len([word for word in text_content.split() if len(word) > 2])
             
-            # Prepare database entry - ONLY fields that exist in schema
-            scan_data = {
-                'user_id': user_id,
+            h1_tags = soup.find_all('h1')
+            h2_tags = soup.find_all('h2')
+            h3_tags = soup.find_all('h3')
+            
+            images = soup.find_all('img')
+            images_without_alt = [img for img in images if not img.get('alt')]
+            
+            links = soup.find_all('a', href=True)
+            internal_links = []
+            external_links = []
+            
+            base_domain = urlparse(url).netloc
+            
+            for link in links:
+                href = link.get('href', '')
+                if href.startswith('http'):
+                    if base_domain in href:
+                        internal_links.append(href)
+                    else:
+                        external_links.append(href)
+                elif href.startswith('/'):
+                    internal_links.append(urljoin(url, href))
+            
+            # Check technical elements
+            viewport = soup.find('meta', attrs={'name': 'viewport'})
+            mobile_friendly = viewport is not None
+            
+            canonical = soup.find('link', attrs={'rel': 'canonical'})
+            has_canonical = canonical is not None
+            
+            # Check for structured data
+            structured_data = soup.find_all('script', attrs={'type': 'application/ld+json'})
+            has_schema = len(structured_data) > 0
+            
+            # Page size
+            page_size = len(response.content) / 1024  # KB
+            
+            # HTTPS check
+            https_enabled = url.startswith('https')
+            
+            # Open Graph tags
+            og_tags = {}
+            for tag in soup.find_all('meta', attrs={'property': lambda x: x and x.startswith('og:')}):
+                og_tags[tag.get('property')] = tag.get('content')
+            
+            return {
                 'url': url,
-                'domain': domain,
-                'title': seo_data['title'][:500] if seo_data['title'] else '',
-                'meta_description': seo_data['description'][:500] if seo_data['description'] else '',
-                'overall_score': scores['overall'],
-                'technical_score': scores['technical'],
-                'content_score': scores['content'],
-                'performance_score': scores['performance'],
-                'http_status': response.status_code,
-                'load_time_ms': load_time,
-                'page_size_kb': len(response.content) // 1024,
-                'word_count': seo_data['word_count'],
-                'image_count': seo_data['image_count'],
-                'link_count': seo_data['link_count'],
-                'h1_count': seo_data['h1_count'],
-                'has_ssl': seo_data['has_ssl'],
-                'is_mobile_friendly': seo_data.get('is_mobile_friendly', True),
-                'issues_detail': issues,
-                'status': 'completed'
+                'status_code': response.status_code,
+                'load_time': load_time,
+                'page_size': round(page_size, 2),
+                'https': https_enabled,
+                'title': title,
+                'title_length': len(title),
+                'description': description,
+                'description_length': len(description),
+                'word_count': word_count,
+                'h1_count': len(h1_tags),
+                'h1_texts': [h1.get_text().strip() for h1 in h1_tags][:3],
+                'h2_count': len(h2_tags),
+                'h3_count': len(h3_tags),
+                'images_total': len(images),
+                'images_without_alt': len(images_without_alt),
+                'internal_links': len(internal_links),
+                'external_links': len(external_links),
+                'mobile_friendly': mobile_friendly,
+                'has_canonical': has_canonical,
+                'has_schema': has_schema,
+                'og_tags': og_tags,
+                'content_sample': text_content[:500]
             }
             
-            # Store in database
-            print(f"💾 Saving scan data...")
-            result = self.supabase.table('seo_scans').insert(scan_data).execute()
-            
-            if result.data and len(result.data) > 0:
-                scan_id = result.data[0]['id']
-                
-                # Update user stats
-                try:
-                    self.supabase.rpc('increment_monthly_scans', {'user_id_param': user_id}).execute()
-                except Exception as e:
-                    print(f"⚠️ Failed to update scan count: {e}")
-                
-                print(f"✅ Scan completed - ID: {scan_id}")
-                return scan_id, None
-            else:
-                return None, "Failed to save scan results"
-                
-        except requests.exceptions.Timeout:
-            return None, f"Request timeout after {self.timeout} seconds"
-        except requests.exceptions.SSLError:
-            return None, "SSL certificate error"
-        except requests.exceptions.ConnectionError:
-            return None, "Failed to connect to website"
-        except requests.exceptions.RequestException as e:
-            return None, f"Network error: {str(e)}"
+        except requests.Timeout:
+            print("❌ Error: Request timeout")
+            return None
+        except requests.RequestException as e:
+            print(f"❌ Error: {str(e)}")
+            return None
         except Exception as e:
-            print(f"❌ Scan error: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return None, f"Scan error: {str(e)}"
+            print(f"❌ Unexpected error: {str(e)}")
+            return None
     
-    def _normalize_url(self, url: str) -> str:
-        """Normalize URL format"""
-        url = url.strip()
-        if not url.startswith(('http://', 'https://')):
-            url = 'https://' + url
-        return url
+    def _analyze_technical(self, data):
+        """Analyze technical SEO aspects"""
+        issues = []
+        warnings = []
+        good_practices = []
+        score = 100
+        
+        # HTTPS
+        if not data['https']:
+            issues.append("Site not using HTTPS - critical security issue")
+            score -= 15
+        else:
+            good_practices.append("✓ HTTPS enabled")
+        
+        # Load time
+        if data['load_time'] > 3000:
+            issues.append(f"Slow load time ({data['load_time']}ms) - should be under 3000ms")
+            score -= 10
+        elif data['load_time'] > 1500:
+            warnings.append(f"Load time could be improved ({data['load_time']}ms)")
+            score -= 5
+        else:
+            good_practices.append(f"✓ Fast load time ({data['load_time']}ms)")
+        
+        # Page size
+        if data['page_size'] > 3000:
+            issues.append(f"Large page size ({data['page_size']}KB) - should be under 3MB")
+            score -= 10
+        elif data['page_size'] > 1500:
+            warnings.append(f"Page size could be optimized ({data['page_size']}KB)")
+            score -= 5
+        else:
+            good_practices.append(f"✓ Optimized page size ({data['page_size']}KB)")
+        
+        # Mobile friendly
+        if not data['mobile_friendly']:
+            issues.append("Missing viewport meta tag - not mobile-friendly")
+            score -= 15
+        else:
+            good_practices.append("✓ Mobile-friendly viewport")
+        
+        # Canonical
+        if not data['has_canonical']:
+            warnings.append("Missing canonical URL tag")
+            score -= 5
+        else:
+            good_practices.append("✓ Canonical URL set")
+        
+        # Structured data
+        if not data['has_schema']:
+            warnings.append("No structured data (Schema.org) found")
+            score -= 5
+        else:
+            good_practices.append("✓ Structured data implemented")
+        
+        # Images alt text
+        if data['images_without_alt'] > 0:
+            warnings.append(f"{data['images_without_alt']} images missing alt text")
+            score -= min(data['images_without_alt'] * 2, 10)
+        
+        return {
+            'score': max(0, score),
+            'issues': issues,
+            'warnings': warnings,
+            'good_practices': good_practices
+        }
     
-    def _extract_seo_data(self, soup: BeautifulSoup, url: str) -> Dict:
-        """Extract SEO data from page"""
-        data = {}
+    def _analyze_content(self, data):
+        """Analyze content quality"""
+        issues = []
+        warnings = []
+        good_practices = []
+        score = 100
         
         # Title
-        title_tag = soup.find('title')
-        data['title'] = title_tag.get_text().strip() if title_tag else ''
+        if not data['title']:
+            issues.append("Missing page title")
+            score -= 20
+        elif data['title_length'] < 30:
+            warnings.append(f"Title too short ({data['title_length']} chars) - recommended 50-60")
+            score -= 5
+        elif data['title_length'] > 70:
+            warnings.append(f"Title too long ({data['title_length']} chars) - may be truncated")
+            score -= 5
+        else:
+            good_practices.append(f"✓ Well-optimized title ({data['title_length']} chars)")
         
-        # Meta description
-        meta_desc = soup.find('meta', attrs={'name': 'description'})
-        if not meta_desc:
-            meta_desc = soup.find('meta', attrs={'property': 'og:description'})
-        data['description'] = meta_desc.get('content', '').strip() if meta_desc else ''
+        # Description
+        if not data['description']:
+            issues.append("Missing meta description")
+            score -= 15
+        elif data['description_length'] < 120:
+            warnings.append(f"Description too short ({data['description_length']} chars) - recommended 150-160")
+            score -= 5
+        elif data['description_length'] > 170:
+            warnings.append(f"Description too long ({data['description_length']} chars) - may be truncated")
+            score -= 5
+        else:
+            good_practices.append(f"✓ Well-optimized description ({data['description_length']} chars)")
         
-        # Heading tags
-        data['h1_count'] = len(soup.find_all('h1'))
-        data['h1_tags'] = [h1.get_text().strip() for h1 in soup.find_all('h1')]
+        # H1 tags
+        if data['h1_count'] == 0:
+            issues.append("Missing H1 tag")
+            score -= 15
+        elif data['h1_count'] > 1:
+            warnings.append(f"Multiple H1 tags ({data['h1_count']}) - should have only one")
+            score -= 5
+        else:
+            good_practices.append("✓ Proper H1 structure")
+        
+        # Word count
+        if data['word_count'] < 300:
+            warnings.append(f"Thin content ({data['word_count']} words) - recommended 500+ words")
+            score -= 10
+        elif data['word_count'] > 500:
+            good_practices.append(f"✓ Good content length ({data['word_count']} words)")
         
         # Images
-        images = soup.find_all('img')
-        data['image_count'] = len(images)
-        data['images_without_alt'] = sum(1 for img in images if not img.get('alt'))
+        if data['images_total'] == 0:
+            warnings.append("No images found - consider adding visual content")
+            score -= 5
         
         # Links
-        links = soup.find_all('a', href=True)
-        data['link_count'] = len(links)
+        if data['internal_links'] == 0:
+            warnings.append("No internal links found")
+            score -= 5
         
-        # Content analysis
-        for script in soup(['script', 'style', 'nav', 'footer', 'header']):
-            script.decompose()
-        
-        text = soup.get_text()
-        words = text.split()
-        data['word_count'] = len(words)
-        
-        # Mobile viewport
-        viewport = soup.find('meta', attrs={'name': 'viewport'})
-        data['is_mobile_friendly'] = viewport is not None
-        
-        # SSL
-        data['has_ssl'] = url.startswith('https://')
-        
-        return data
-    
-    def _calculate_scores(self, data: Dict) -> Dict[str, int]:
-        """Calculate SEO scores"""
-        scores = {
-            'technical': 100,
-            'content': 100,
-            'performance': 100
+        return {
+            'score': max(0, score),
+            'issues': issues,
+            'warnings': warnings,
+            'good_practices': good_practices
         }
-        
-        # Technical score
-        if not data.get('has_ssl'):
-            scores['technical'] -= 20
-        
-        h1_count = data.get('h1_count', 0)
-        if h1_count == 0:
-            scores['technical'] -= 15
-        elif h1_count > 1:
-            scores['technical'] -= 8
-        
-        if not data.get('is_mobile_friendly'):
-            scores['technical'] -= 10
-        
-        # Content score
-        title = data.get('title', '')
-        if not title:
-            scores['content'] -= 25
-        elif len(title) < 30:
-            scores['content'] -= 15
-        elif len(title) > 60:
-            scores['content'] -= 10
-        
-        description = data.get('description', '')
-        if not description:
-            scores['content'] -= 25
-        elif len(description) < 100:
-            scores['content'] -= 15
-        elif len(description) > 160:
-            scores['content'] -= 10
-        
-        word_count = data.get('word_count', 0)
-        if word_count < 300:
-            scores['content'] -= 20
-        elif word_count < 600:
-            scores['content'] -= 10
-        
-        images_without_alt = data.get('images_without_alt', 0)
-        image_count = data.get('image_count', 0)
-        if image_count > 0:
-            alt_ratio = images_without_alt / image_count
-            if alt_ratio > 0.5:
-                scores['content'] -= 15
-            elif alt_ratio > 0.3:
-                scores['content'] -= 8
-        
-        # Performance score
-        load_time = data.get('load_time_ms', 0)
-        if load_time > 5000:
-            scores['performance'] -= 50
-        elif load_time > 3000:
-            scores['performance'] -= 35
-        elif load_time > 2000:
-            scores['performance'] -= 20
-        elif load_time > 1000:
-            scores['performance'] -= 10
-        
-        page_size = data.get('page_size_kb', 0)
-        if page_size > 5000:
-            scores['performance'] -= 30
-        elif page_size > 3000:
-            scores['performance'] -= 20
-        elif page_size > 2000:
-            scores['performance'] -= 10
-        
-        if image_count > 50:
-            scores['performance'] -= 20
-        elif image_count > 30:
-            scores['performance'] -= 10
-        
-        # Ensure scores don't go below 0
-        for key in scores:
-            scores[key] = max(0, scores[key])
-        
-        # Calculate overall
-        scores['overall'] = int(
-            (scores['technical'] * 0.35 + 
-             scores['content'] * 0.40 + 
-             scores['performance'] * 0.25)
-        )
-        
-        return scores
     
-    def _identify_issues(self, data: Dict) -> Dict[str, List[str]]:
-        """Identify SEO issues"""
-        issues = {
-            'critical': [],
-            'high': [],
-            'medium': [],
-            'low': []
+    def _ai_technical_analysis(self, data):
+        """AI-powered technical SEO analysis"""
+        if not self.ai_model:
+            return {}
+        
+        prompt = f"""You are an expert Technical SEO consultant. Analyze this website data:
+
+URL: {data['url']}
+Load Time: {data['load_time']}ms
+Page Size: {data['page_size']}KB
+HTTPS: {data['https']}
+Mobile Friendly: {data['mobile_friendly']}
+Has Schema: {data['has_schema']}
+
+Provide a technical SEO analysis in JSON format:
+{{
+    "score": 85,
+    "critical_issues": ["issue1", "issue2"],
+    "recommendations": [
+        {{
+            "priority": "High",
+            "issue": "Specific technical issue",
+            "solution": "Detailed solution",
+            "impact": "Expected improvement",
+            "implementation_time": "Estimated time to fix"
+        }}
+    ],
+    "performance_insights": "Brief analysis of performance"
+}}
+
+Focus on actionable, specific recommendations. Be concise but detailed."""
+        
+        try:
+            response = self.ai_model.generate_content(prompt)
+            result = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(result)
+        except Exception as e:
+            print(f"AI Analysis Error: {str(e)}")
+            return {}
+    
+    def _ai_content_analysis(self, data):
+        """AI-powered content quality analysis"""
+        if not self.ai_model:
+            return {}
+        
+        prompt = f"""You are a content SEO expert. Analyze this content:
+
+Title: {data['title']}
+Description: {data['description']}
+Word Count: {data['word_count']}
+H1 Tags: {data['h1_count']} - {data['h1_texts']}
+Content Sample: {data['content_sample']}
+
+Provide content analysis in JSON format:
+{{
+    "score": 75,
+    "content_quality": "Brief assessment",
+    "strengths": ["strength1", "strength2"],
+    "weaknesses": ["weakness1", "weakness2"],
+    "keyword_opportunities": ["keyword1", "keyword2"],
+    "content_strategy": [
+        "Specific action 1",
+        "Specific action 2"
+    ],
+    "tone_analysis": "Professional/Casual/Technical etc."
+}}
+
+Be specific and actionable."""
+        
+        try:
+            response = self.ai_model.generate_content(prompt)
+            result = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(result)
+        except Exception as e:
+            print(f"AI Analysis Error: {str(e)}")
+            return {}
+    
+    def _ai_competitive_analysis(self, data):
+        """AI-powered competitive intelligence"""
+        if not self.ai_model:
+            return {}
+        
+        prompt = f"""You are a competitive intelligence expert. Based on this website:
+
+URL: {data['url']}
+Title: {data['title']}
+Content: {data['content_sample']}
+
+Provide competitive analysis in JSON format:
+{{
+    "likely_competitors": ["competitor1.com", "competitor2.com"],
+    "market_positioning": "Brief positioning statement",
+    "competitive_advantages": ["advantage1", "advantage2"],
+    "differentiation_opportunities": ["opportunity1", "opportunity2"],
+    "quick_wins": [
+        "Specific tactic to outrank competitors"
+    ]
+}}
+
+Be strategic and specific."""
+        
+        try:
+            response = self.ai_model.generate_content(prompt)
+            result = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(result)
+        except Exception as e:
+            print(f"AI Analysis Error: {str(e)}")
+            return {}
+    
+    def _ai_generate_action_plan(self, data):
+        """AI-powered 30-day action plan"""
+        if not self.ai_model:
+            return {}
+        
+        prompt = f"""You are a strategic SEO consultant. Create a 30-day action plan for this website:
+
+URL: {data['url']}
+Current Performance:
+- Load Time: {data['load_time']}ms
+- Word Count: {data['word_count']}
+- Technical Score: Basic audit needed
+
+Create a prioritized plan in JSON format:
+{{
+    "estimated_traffic_increase": "15-25%",
+    "week_1_quick_wins": [
+        {{"task": "Specific task", "impact": "High/Medium/Low", "effort": "1-10", "details": "How to do it"}}
+    ],
+    "week_2_3_improvements": [
+        {{"task": "Specific task", "impact": "High/Medium/Low", "effort": "1-10", "details": "How to do it"}}
+    ],
+    "week_4_strategy": [
+        {{"task": "Specific task", "impact": "High/Medium/Low", "effort": "1-10", "details": "How to do it"}}
+    ],
+    "success_metrics": ["metric1", "metric2"],
+    "budget_estimate": "If paid tools/services needed"
+}}
+
+Prioritize by ROI. Be specific and actionable."""
+        
+        try:
+            response = self.ai_model.generate_content(prompt)
+            result = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(result)
+        except Exception as e:
+            print(f"AI Analysis Error: {str(e)}")
+            return {}
+    
+    def _calculate_overall_score(self, technical, content):
+        """Calculate overall SEO score"""
+        tech_score = technical.get('score', 0)
+        content_score = content.get('score', 0)
+        
+        # Weighted average (technical = 60%, content = 40%)
+        overall = (tech_score * 0.6) + (content_score * 0.4)
+        
+        return {
+            'overall': round(overall, 1),
+            'technical': tech_score,
+            'content': content_score,
+            'grade': self._get_grade(overall)
         }
+    
+    def _get_grade(self, score):
+        """Convert score to letter grade"""
+        if score >= 90:
+            return 'A'
+        elif score >= 80:
+            return 'B'
+        elif score >= 70:
+            return 'C'
+        elif score >= 60:
+            return 'D'
+        else:
+            return 'F'
+    
+    def export_report(self, scan_result, format='json', filename=None):
+        """Export scan results to file"""
+        if not filename:
+            domain = urlparse(scan_result['url']).netloc
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"seo_report_{domain}_{timestamp}.{format}"
         
-        # Critical
-        if not data.get('has_ssl'):
-            issues['critical'].append('🔒 Website not using HTTPS - Security risk')
+        if format == 'json':
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(scan_result, f, indent=2, ensure_ascii=False)
         
-        if not data.get('title'):
-            issues['critical'].append('📄 Missing title tag - Critical for SEO')
+        print(f"✅ Report saved: {filename}")
+        return filename
+
+
+# CLI Usage Example
+if __name__ == "__main__":
+    # Initialize scanner
+    scanner = SmartSEOScanner()
+    
+    # Example scan
+    url = "https://example.com"
+    
+    print(f"\n{'='*60}")
+    print(f"NEXUS SEO INTELLIGENCE - Smart Scanner")
+    print(f"{'='*60}\n")
+    
+    # Perform scan
+    results = scanner.scan_website(url, include_ai=True)
+    
+    # Display results
+    if results and 'error' not in results:
+        print(f"\n📊 SCAN RESULTS")
+        print(f"{'='*60}")
+        print(f"URL: {results['url']}")
+        print(f"Overall Score: {results['overall_score']['overall']}/100 (Grade: {results['overall_score']['grade']})")
+        print(f"Technical Score: {results['overall_score']['technical']}/100")
+        print(f"Content Score: {results['overall_score']['content']}/100")
         
-        # High priority
-        h1_count = data.get('h1_count', 0)
-        if h1_count == 0:
-            issues['high'].append('📑 No H1 tag found - Important for page structure')
-        elif h1_count > 1:
-            issues['high'].append(f'📑 Multiple H1 tags ({h1_count}) - Should have only one')
-        
-        if not data.get('description'):
-            issues['high'].append('📝 Missing meta description - Impacts click-through rate')
-        
-        if not data.get('is_mobile_friendly'):
-            issues['high'].append('📱 Not mobile-friendly - Missing viewport meta tag')
-        
-        load_time = data.get('load_time_ms', 0)
-        if load_time > 3000:
-            issues['high'].append(f'⏱️ Slow page load time ({load_time}ms) - Aim for under 2000ms')
-        
-        # Medium priority
-        title = data.get('title', '')
-        if title and len(title) < 30:
-            issues['medium'].append(f'📏 Title too short ({len(title)} chars) - Aim for 30-60')
-        elif title and len(title) > 60:
-            issues['medium'].append(f'📏 Title too long ({len(title)} chars) - May be truncated')
-        
-        description = data.get('description', '')
-        if description and len(description) < 100:
-            issues['medium'].append(f'📏 Meta description too short ({len(description)} chars)')
-        elif description and len(description) > 160:
-            issues['medium'].append(f'📏 Meta description too long ({len(description)} chars)')
-        
-        word_count = data.get('word_count', 0)
-        if word_count < 300:
-            issues['medium'].append(f'📊 Low word count ({word_count}) - Add more content')
-        
-        page_size = data.get('page_size_kb', 0)
-        if page_size > 3000:
-            issues['medium'].append(f'💾 Large page size ({page_size}KB) - Consider optimization')
-        
-        # Low priority
-        images_without_alt = data.get('images_without_alt', 0)
-        if images_without_alt > 0:
-            issues['low'].append(f'🖼️ {images_without_alt} images missing alt text')
-        
-        return issues
+        # Export
+        filename = scanner.export_report(results)
+        print(f"\n✅ Full report saved to: {filename}")
+    else:
+        print("\n❌ Scan failed!")

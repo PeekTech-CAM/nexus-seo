@@ -31,3 +31,10 @@ charset-normalizer>=3.3.0
 
 # Optional but recommended
 httpx>=0.25.0
+
+streamlit>=1.28.0
+supabase>=2.0.0
+google-generativeai>=0.3.0
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+python-dotenv>=1.0.0

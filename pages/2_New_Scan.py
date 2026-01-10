@@ -6,6 +6,7 @@ Professional SEO scanning interface with AI analysis
 import streamlit as st
 import os
 import sys
+import time
 from datetime import datetime
 
 # Page config

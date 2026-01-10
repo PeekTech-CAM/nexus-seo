@@ -1,16 +1,15 @@
 """
-AI Service for SEO Analysis
-Clean, working version with gemini-1.5-flash
+Enhanced AI Service for SEO Analysis
+Shows CLEAR value with actionable, personalized recommendations
 """
 
 import google.generativeai as genai
 import os
 import streamlit as st
 from typing import Dict, Optional
-import json
 
 class AIAnalysisService:
-    """Handle AI-powered SEO analysis using Google Gemini"""
+    """AI-powered SEO consultant using Google Gemini"""
     
     def __init__(self):
         """Initialize Gemini API"""
@@ -18,7 +17,7 @@ class AIAnalysisService:
         self.model_name = None
         
         try:
-            # Get API Key from Streamlit secrets or environment
+            # Get API Key
             api_key = None
             if hasattr(st, 'secrets'):
                 api_key = st.secrets.get("GOOGLE_API_KEY")
@@ -26,16 +25,14 @@ class AIAnalysisService:
                 api_key = os.getenv("GOOGLE_API_KEY")
             
             if not api_key:
-                print("❌ Error: GOOGLE_API_KEY not found in secrets or environment")
+                print("❌ GOOGLE_API_KEY not configured")
                 return
             
             # Configure Gemini
             genai.configure(api_key=api_key)
-            
-            # Use gemini-1.5-flash (latest stable model)
             self.model_name = 'gemini-1.5-flash'
             self.model = genai.GenerativeModel(self.model_name)
-            print(f"✅ AI Service initialized with model '{self.model_name}'")
+            print(f"✅ AI Service ready with {self.model_name}")
             
         except Exception as e:
             print(f"❌ AI initialization error: {str(e)}")
@@ -46,21 +43,19 @@ class AIAnalysisService:
         return self.model is not None
     
     def analyze_seo_scan(self, scan_data: Dict) -> Optional[str]:
-        """Generate AI-powered SEO recommendations"""
+        """Generate AI-powered SEO recommendations with CLEAR value"""
         if not self.model:
             return None
         
         try:
-            prompt = self._create_analysis_prompt(scan_data)
+            prompt = self._create_expert_prompt(scan_data)
             
-            # Generate content with safety settings
             response = self.model.generate_content(
                 prompt,
                 generation_config={
-                    'temperature': 0.7,
-                    'top_p': 0.8,
-                    'top_k': 40,
-                    'max_output_tokens': 2048,
+                    'temperature': 0.8,
+                    'top_p': 0.9,
+                    'max_output_tokens': 3000,
                 }
             )
             
@@ -70,107 +65,175 @@ class AIAnalysisService:
             print(f"❌ AI analysis error: {str(e)}")
             return None
     
-    def _create_analysis_prompt(self, scan_data: Dict) -> str:
-        """Create a detailed prompt for AI analysis"""
+    def _create_expert_prompt(self, scan_data: Dict) -> str:
+        """Create expert-level prompt showing AI value"""
         
         url = scan_data.get('url', 'Unknown')
-        overall_score = scan_data.get('overall_score', 0)
-        technical_score = scan_data.get('technical_score', 0)
-        content_score = scan_data.get('content_score', 0)
-        performance_score = scan_data.get('performance_score', 0)
+        overall = scan_data.get('overall_score', 0)
+        technical = scan_data.get('technical_score', 0)
+        content = scan_data.get('content_score', 0)
+        performance = scan_data.get('performance_score', 0)
         
-        # Extract metadata
-        title = scan_data.get('title', 'N/A')
-        meta_desc = scan_data.get('meta_description', 'N/A')
+        title = scan_data.get('title', '')
+        meta_desc = scan_data.get('meta_description', '')
         word_count = scan_data.get('word_count', 0)
+        h1_count = scan_data.get('h1_count', 0)
         load_time = scan_data.get('load_time_ms', 0)
         has_ssl = scan_data.get('has_ssl', False)
         
-        # Extract issues
         issues = scan_data.get('issues_detail', {})
-        critical_issues = issues.get('critical', [])
-        high_issues = issues.get('high', [])
-        medium_issues = issues.get('medium', [])
+        critical = issues.get('critical', [])
+        high = issues.get('high', [])
+        medium = issues.get('medium', [])
         
-        prompt = f"""You are an expert SEO consultant analyzing a website audit. Provide clear, actionable recommendations.
+        prompt = f"""You are an EXPERT SEO consultant analyzing a website. Provide ACTIONABLE, SPECIFIC recommendations that show CLEAR VALUE beyond basic SEO scanning.
 
-🌐 WEBSITE ANALYSIS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-URL: {url}
-Overall Score: {overall_score}/100
+🌐 WEBSITE AUDIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**URL:** {url}
+**Overall SEO Score:** {overall}/100
 
-📊 SCORE BREAKDOWN:
-• Technical SEO: {technical_score}/100
-• Content Quality: {content_score}/100
-• Performance: {performance_score}/100
+📊 DETAILED SCORES:
+• Technical SEO: {technical}/100 {'🔴' if technical < 60 else '🟡' if technical < 80 else '🟢'}
+• Content Quality: {content}/100 {'🔴' if content < 60 else '🟡' if content < 80 else '🟢'}
+• Performance: {performance}/100 {'🔴' if performance < 60 else '🟡' if performance < 80 else '🟢'}
 
-📝 CURRENT STATUS:
-• Title: {title[:100]}
-• Meta Description: {meta_desc[:150]}
-• Word Count: {word_count}
+📋 CURRENT STATE:
+• Title: "{title[:80]}..." ({len(title)} chars)
+• Meta Desc: "{meta_desc[:80]}..." ({len(meta_desc)} chars)
+• Content: {word_count} words
+• H1 Tags: {h1_count}
 • Load Time: {load_time}ms
-• HTTPS: {'✅' if has_ssl else '❌'}
+• HTTPS: {'Yes ✅' if has_ssl else 'No ❌'}
 
-🚨 ISSUES DETECTED:
+🚨 DETECTED ISSUES:
+**Critical ({len(critical)}):**
+{self._format_list(critical) if critical else '✅ None'}
 
-CRITICAL ({len(critical_issues)}):
-{self._format_issues(critical_issues) if critical_issues else '✅ None'}
+**High Priority ({len(high)}):**
+{self._format_list(high) if high else '✅ None'}
 
-HIGH PRIORITY ({len(high_issues)}):
-{self._format_issues(high_issues) if high_issues else '✅ None'}
+**Medium Priority ({len(medium)}):**
+{self._format_list(medium) if medium else '✅ None'}
 
-MEDIUM PRIORITY ({len(medium_issues)}):
-{self._format_issues(medium_issues) if medium_issues else '✅ None'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Your task: Provide EXPERT analysis that goes BEYOND basic scanning. Show clear value by:
 
-Please provide:
+## 🎯 1. STRATEGIC ASSESSMENT (2-3 sentences)
+- What's the BIGGEST opportunity being missed?
+- What's the competitive advantage/disadvantage?
+- Industry-specific insights
 
-## 📋 Executive Summary
-Brief 2-3 sentence overview of the website's SEO health.
+## 🔥 2. TOP 3 PRIORITY FIXES (Ranked by ROI)
+For each fix:
+- **What to do:** Specific action
+- **Why it matters:** Business impact (traffic, conversions, rankings)
+- **How to implement:** Step-by-step (30-50 words)
+- **Expected impact:** Quantify if possible
 
-## 🎯 Top 3 Priority Actions
-1. [Most critical fix]
-2. [Second priority]
-3. [Third priority]
+Example format:
+### 1. 🎯 [Specific Issue]
+**Impact:** High - Could increase organic traffic by 20-40%
+**Action:** [Detailed implementation steps]
+**Timeline:** [Hours/Days needed]
 
-## ⚡ Quick Wins
-List 3-5 easy improvements that can be done immediately.
+## ⚡ 3. QUICK WINS (Do TODAY)
+List 3-5 changes that take <30 minutes each but have immediate impact:
+- ✅ [Specific change] → [Expected result]
+- ✅ [Specific change] → [Expected result]
 
-## 💡 Long-term Recommendations
-2-3 strategic improvements for sustained growth.
+## 🚀 4. ADVANCED OPTIMIZATIONS
+2-3 advanced strategies that competitors likely aren't doing:
+- Advanced schema markup opportunities
+- Content gap analysis vs competitors
+- User intent optimization strategies
 
-Keep it concise, actionable, and easy to understand. Use emojis for better readability."""
+## 💡 5. CONTENT STRATEGY
+- What content is missing based on the current page?
+- What keywords should be targeted?
+- What internal linking opportunities exist?
+
+## 📈 6. COMPETITIVE POSITIONING
+- Where does this page stand vs typical competitors?
+- What's the path to ranking in top 3?
+
+## ⚠️ 7. RISK ASSESSMENT
+- What could hurt rankings in the next algorithm update?
+- Any penalties or manual action risks?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT GUIDELINES:
+✅ BE SPECIFIC - No generic advice like "improve content"
+✅ QUANTIFY IMPACT - Use numbers when possible
+✅ PROVIDE CONTEXT - Explain WHY, not just WHAT
+✅ PRIORITIZE BY ROI - Focus on high-impact, low-effort first
+✅ BE ACTIONABLE - Include exact steps
+✅ SHOW EXPERTISE - Go beyond what basic tools say
+✅ BE HONEST - Don't oversell if the site is already good
+
+Use emojis for readability. Write in a confident, expert tone."""
 
         return prompt
     
-    def _format_issues(self, issues: list) -> str:
-        """Format issues list"""
-        if not issues:
-            return "None detected ✅"
-        
-        formatted = []
-        for i, issue in enumerate(issues[:5], 1):
-            formatted.append(f"  {i}. {issue}")
-        
-        if len(issues) > 5:
-            formatted.append(f"  ... and {len(issues) - 5} more")
-        
-        return "\n".join(formatted)
+    def _format_list(self, items: list) -> str:
+        """Format list items"""
+        if not items:
+            return "None"
+        return "\n".join([f"  • {item}" for item in items[:5]])
     
-    def generate_quick_tip(self, score: int) -> str:
-        """Generate a quick tip based on score"""
+    def generate_competitive_insights(self, scan_data: Dict) -> Optional[str]:
+        """Generate competitive positioning insights"""
         if not self.model:
-            return "Improve your SEO by fixing the critical issues first."
+            return None
         
         try:
-            prompt = f"""Give one actionable SEO tip for a website with a score of {score}/100. 
-Keep it under 20 words. Start with an emoji."""
+            url = scan_data.get('url', '')
+            score = scan_data.get('overall_score', 0)
             
+            prompt = f"""As an SEO expert, analyze this website's competitive position:
+
+URL: {url}
+Current Score: {score}/100
+
+Provide:
+1. **Industry Benchmark:** Where does {score}/100 stand in their industry?
+2. **Competitive Gap:** What are competitors likely doing better?
+3. **Differentiation Strategy:** How can they stand out?
+
+Keep it under 150 words, be specific and actionable."""
+
             response = self.model.generate_content(prompt)
-            return response.text.strip()
+            return response.text
         except:
-            return "Focus on the highest priority issues to improve your score."
+            return None
+    
+    def generate_content_suggestions(self, scan_data: Dict) -> Optional[str]:
+        """Generate content improvement suggestions"""
+        if not self.model:
+            return None
+        
+        try:
+            title = scan_data.get('title', '')
+            word_count = scan_data.get('word_count', 0)
+            
+            prompt = f"""As a content strategist, analyze this page:
+
+Title: {title}
+Word Count: {word_count}
+
+Suggest:
+1. **Missing Topics:** 3 topics that should be covered
+2. **Content Gaps:** What questions aren't being answered?
+3. **Engagement Hooks:** 2 ways to improve user engagement
+
+Keep it actionable and specific (under 200 words)."""
+
+            response = self.model.generate_content(prompt)
+            return response.text
+        except:
+            return None
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -187,18 +250,23 @@ def get_ai_service() -> AIAnalysisService:
     return _ai_service
 
 def analyze_seo_with_ai(scan_data: Dict) -> Optional[str]:
-    """Quick function to analyze SEO scan with AI"""
+    """Main function: Get comprehensive AI analysis"""
     service = get_ai_service()
     if not service.is_available():
         return None
     return service.analyze_seo_scan(scan_data)
 
 def is_ai_available() -> bool:
-    """Check if AI service is available"""
+    """Check if AI is configured"""
     service = get_ai_service()
     return service.is_available()
 
-def get_quick_tip(score: int) -> str:
-    """Get a quick SEO tip based on score"""
+def get_competitive_insights(scan_data: Dict) -> Optional[str]:
+    """Get competitive positioning insights"""
     service = get_ai_service()
-    return service.generate_quick_tip(score)
+    return service.generate_competitive_insights(scan_data)
+
+def get_content_suggestions(scan_data: Dict) -> Optional[str]:
+    """Get content improvement suggestions"""
+    service = get_ai_service()
+    return service.generate_content_suggestions(scan_data)

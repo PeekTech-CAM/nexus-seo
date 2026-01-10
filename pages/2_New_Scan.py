@@ -113,7 +113,7 @@ if st.button("🚀 Start Scan", type="primary", use_container_width=True):
                     st.success("✅ Scan complete!")
                     
                     # Get scan data
-                    scan_result = service_supabase.table("scans").select("*").eq("id", scan_id).execute()
+                    scan_result = service_supabase.table("seo_scans").select("*").eq("id", scan_id).execute()
                     
                     if scan_result.data:
                         scan_data = scan_result.data[0]
@@ -126,7 +126,7 @@ if st.button("🚀 Start Scan", type="primary", use_container_width=True):
                                     
                                 if ai_recommendations:
                                     scan_data['ai_recommendations'] = ai_recommendations
-                                    service_supabase.table('scans').update({
+                                    service_supabase.table('seo_scans').update({
                                         'ai_recommendations': ai_recommendations
                                     }).eq('id', scan_id).execute()
                                     st.success("✅ AI analysis complete!")
@@ -210,7 +210,7 @@ st.markdown("---")
 st.markdown("### 📚 Recent Scans")
 
 try:
-    recent = service_supabase.table("scans").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(5).execute()
+    recent = service_supabase.table("seo_scans").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(5).execute()
     
     if recent.data:
         for scan in recent.data:

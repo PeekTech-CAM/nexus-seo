@@ -108,7 +108,7 @@ class SEOScanner:
                 'status': 'completed'
             }
             
-            result = self.supabase.table('scans').insert(scan_data).execute()
+            result = self.supabase.table('seo_scans').insert(scan_data).execute()
             
             if result.data:
                 scan_id = result.data[0]['id']

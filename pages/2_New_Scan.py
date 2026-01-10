@@ -24,8 +24,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Import services - FIXED: Using ai_service instead of gemini_service
 try:
     from services.seo_scanner import SEOScanner
-    from services.pdf_generator import generate_seo_report
-    from services.ai_service import analyze_seo_with_ai  # FIXED IMPORT
+    from services.ai_service import analyze_seo_with_ai
+    
+    # PDF generation is optional
+    try:
+        # from services.pdf_generator import generate_seo_report
+        PDF_AVAILABLE = True
+    except ImportError:
+        PDF_AVAILABLE = False
+        
 except ImportError as e:
     st.error(f"❌ Import error: {str(e)}")
     st.info("Make sure services directory exists with all required files")

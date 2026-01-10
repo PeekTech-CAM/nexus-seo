@@ -46,13 +46,26 @@ supabase = get_supabase_client()
 # Initialize Gemini AI
 @st.cache_resource
 def get_gemini_client():
+    """Initialize Gemini with better error handling"""
     try:
-        api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv('GEMINI_API_KEY')
-        if api_key:
-            genai.configure(api_key=api_key)
+        # Try multiple ways to get the API key
+        api_key = None
+        
+        # Method 1: Streamlit secrets
+        if hasattr(st, 'secrets') and 'GEMINI_API_KEY' in st.secrets:
+            api_key = st.secrets["GEMINI_API_KEY"]
+            
+        # Method 2: Environment variable
+        if not api_key:
+            api_key = os.getenv('GEMINI_API_KEY')
+        
+        if api_key and api_key.strip():
+            genai.configure(api_key=api_key.strip())
             return genai.GenerativeModel('gemini-1.5-pro')
+        
         return None
-    except:
+    except Exception as e:
+        st.warning(f"Gemini initialization error: {str(e)}")
         return None
 
 gemini_model = get_gemini_client()
@@ -352,8 +365,41 @@ with st.form("smart_scan_form"):
     submit = st.form_submit_button("🚀 Start Smart Analysis", use_container_width=True)
 
 if submit and url:
+    # Check if Gemini is configured
     if not gemini_model:
         st.error("❌ AI Engine not configured. Please add GEMINI_API_KEY to your secrets.")
+        
+        # Show debug info
+        with st.expander("🔍 Debug Information"):
+            st.write("**Checking for API key...**")
+            
+            has_secrets = hasattr(st, 'secrets')
+            st.write(f"- Streamlit secrets available: {has_secrets}")
+            
+            if has_secrets:
+                has_key = 'GEMINI_API_KEY' in st.secrets
+                st.write(f"- GEMINI_API_KEY in secrets: {has_key}")
+                
+                if has_key:
+                    key_length = len(st.secrets["GEMINI_API_KEY"])
+                    st.write(f"- Key length: {key_length} characters")
+                    st.write(f"- Key starts with: {st.secrets['GEMINI_API_KEY'][:10]}...")
+            
+            st.write("**Available secrets:**")
+            if has_secrets:
+                st.write(list(st.secrets.keys()))
+            
+            st.info("""
+            **To fix this:**
+            1. Go to Streamlit Cloud → App Settings → Secrets
+            2. Add this line:
+            ```
+            GEMINI_API_KEY = "your-actual-api-key"
+            ```
+            3. Click Save and wait 30 seconds
+            4. Refresh this page
+            """)
+        
         st.stop()
     
     # Progress tracking

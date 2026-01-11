@@ -5,7 +5,20 @@ Add this to test your secrets configuration
 
 import streamlit as st
 import os
+import streamlit as st
 
+st.set_page_config(
+    page_title="Advanced Scanner",
+    page_icon="🔍",
+    layout="wide"
+)
+
+# ADD THESE 2 LINES HERE ↓↓↓
+from nav_component import add_page_navigation
+add_page_navigation("Advanced Scanner", "🔍")
+
+# Rest of your code continues...
+st.title("🔍 Advanced SEO Scanner")
 st.title("🔍 Secrets Diagnostic Tool")
 st.markdown("This will help us find why GEMINI_API_KEY isn't working")
 

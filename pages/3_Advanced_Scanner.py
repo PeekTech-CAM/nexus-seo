@@ -4,6 +4,20 @@ from datetime import datetime
 from fpdf import FPDF
 import io
 import base64
+import streamlit as st
+
+st.set_page_config(
+    page_title="Advanced Scanner",
+    page_icon="🔍",
+    layout="wide"
+)
+
+# ADD THESE 2 LINES HERE ↓↓↓
+from nav_component import add_page_navigation
+add_page_navigation("Advanced Scanner", "🔍")
+
+# Rest of your code continues...
+st.title("🔍 Advanced SEO Scanner")
 
 # Page config
 st.set_page_config(

@@ -11,7 +11,20 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.sidebar import setup_sidebar
 setup_sidebar()
+import streamlit as st
 
+st.set_page_config(
+    page_title="Advanced Scanner",
+    page_icon="🔍",
+    layout="wide"
+)
+
+# ADD THESE 2 LINES HERE ↓↓↓
+from nav_component import add_page_navigation
+add_page_navigation("Advanced Scanner", "🔍")
+
+# Rest of your code continues...
+st.title("🔍 Advanced SEO Scanner")
 # Hide navigation - ADD THIS
 st.markdown("""
     <style>

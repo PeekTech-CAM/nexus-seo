@@ -2,33 +2,32 @@ import streamlit as st
 import time
 from datetime import datetime
 from fpdf import FPDF
-import io
 import base64
-import streamlit as st
 
+# ============================================================================
+# PAGE CONFIG - MUST BE FIRST (only once!)
+# ============================================================================
 st.set_page_config(
-    page_title="Advanced Scanner",
+    page_title="Advanced SEO Scanner",
     page_icon="🔍",
     layout="wide"
 )
 
-# ADD THESE 2 LINES HERE ↓↓↓
+# ============================================================================
+# NAVIGATION COMPONENT
+# ============================================================================
 from nav_component import add_page_navigation
 add_page_navigation("Advanced Scanner", "🔍")
 
-# Rest of your code continues...
-st.title("🔍 Advanced SEO Scanner")
-
-# Page config
-st.set_page_config(
-    page_title="AI SEO Scanner - Nexus Intelligence",
-    page_icon="🧠",
-    layout="wide"
-)
-
-# Custom CSS (same as before)
+# ============================================================================
+# HIDE DEFAULT STREAMLIT NAV
+# ============================================================================
 st.markdown("""
 <style>
+    [data-testid="stSidebarNav"] {display: none !important;}
+    section[data-testid="stSidebarNav"] {display: none !important;}
+    nav[aria-label="Pages"] {display: none !important;}
+    
     .main-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 2rem;
@@ -66,7 +65,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# PDF Generation Function
+# ============================================================================
+# PDF GENERATION FUNCTION
+# ============================================================================
 def generate_pdf_report(results):
     """Generate PDF report from scan results"""
     try:
@@ -108,19 +109,15 @@ def generate_pdf_report(results):
                     pdf.multi_cell(0, 6, f"  {i}. {step}")
         
         # Generate PDF bytes
-        pdf_bytes = pdf.output(dest='S').encode('latin-1')
-        return pdf_bytes
+        return pdf.output(dest='S').encode('latin-1')
+    
     except Exception as e:
         st.error(f"PDF generation error: {str(e)}")
         return None
 
-# Download button helper
-def create_download_link(pdf_bytes, filename):
-    """Create a download link for PDF"""
-    b64 = base64.b64encode(pdf_bytes).decode()
-    return f'<a href="data:application/pdf;base64,{b64}" download="{filename}" class="download-button">📥 Download PDF Report</a>'
-
-# Initialize session state
+# ============================================================================
+# SESSION STATE INITIALIZATION
+# ============================================================================
 if 'scan_results' not in st.session_state:
     st.session_state.scan_results = None
 if 'scan_url' not in st.session_state:
@@ -128,7 +125,9 @@ if 'scan_url' not in st.session_state:
 if 'selected_solutions' not in st.session_state:
     st.session_state.selected_solutions = {}
 
-# Header
+# ============================================================================
+# HEADER
+# ============================================================================
 st.markdown("""
 <div class="main-header">
     <h1>🧠 AI-Powered SEO Intelligence Scanner</h1>
@@ -138,7 +137,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Scanner Section
+# ============================================================================
+# SCANNER SECTION (No Results Yet)
+# ============================================================================
 if st.session_state.scan_results is None:
     col1, col2 = st.columns([4, 1])
     
@@ -186,7 +187,7 @@ if st.session_state.scan_results is None:
                 progress_bar.progress((i + 1) / len(stages))
                 time.sleep(0.5)
             
-            # Generate results (same mock data as before)
+            # Generate mock results
             st.session_state.scan_results = {
                 "url": url,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -207,7 +208,7 @@ if st.session_state.scan_results is None:
                             "Award-winning specialty coffee roasted fresh daily. 100% organic beans from ethical farms worldwide.",
                             "Transform your morning with artisan coffee beans. Ethically sourced, expertly roasted."
                         ],
-                        "code": '''<meta name="description" content="Your optimized description">''',
+                        "code": '<meta name="description" content="Your optimized description">',
                         "steps": [
                             "AI analyzes your page content and target audience",
                             "Generates 3 unique descriptions (150-160 characters)",
@@ -300,11 +301,13 @@ if st.session_state.scan_results is None:
             st.success("✅ Analysis complete!")
             st.rerun()
 
-# Results Section
+# ============================================================================
+# RESULTS SECTION
+# ============================================================================
 else:
     results = st.session_state.scan_results
     
-    # Score card with metrics
+    # Score cards
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -342,7 +345,7 @@ else:
                     st.download_button(
                         label="⬇️ Download PDF",
                         data=pdf_bytes,
-                        file_name=f"seo_report_{results['url'].replace('https://', '').replace('/', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                        file_name=f"seo_report_{results['url'].replace('https://', '').replace('http://', '').replace('/', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
                         mime="application/pdf",
                         use_container_width=True
                     )
@@ -356,7 +359,7 @@ else:
     st.markdown("---")
     st.markdown("## 🔍 Issues & AI-Powered Solutions")
     
-    # Issues
+    # Display issues
     for issue in results['issues']:
         severity_emoji = "🔴" if issue['severity'] == "critical" else "🟡" if issue['severity'] == "warning" else "🔵"
         

@@ -1,41 +1,41 @@
 """
-Scan Results Page - Complete Version
+Scan Results Page - Fixed Version
 """
 
 import streamlit as st
-
-# HIDE NAVIGATION - MUST BE FIRST
-st.markdown("""
-<style>
-    [data-testid="stSidebarNav"] {display: none !important;}
-    section[data-testid="stSidebar"] > div:first-child {display: none !important;}
-</style>
-""", unsafe_allow_html=True)
-
 from supabase import create_client
 import json
 from datetime import datetime
 
+# ============================================================================
+# PAGE CONFIG - MUST BE FIRST (only once!)
+# ============================================================================
 st.set_page_config(
     page_title="Scan Results - Nexus SEO",
     page_icon="📊",
     layout="wide"
 )
-import streamlit as st
 
-st.set_page_config(
-    page_title="Advanced Scanner",
-    page_icon="🔍",
-    layout="wide"
-)
+# ============================================================================
+# HIDE DEFAULT STREAMLIT NAV
+# ============================================================================
+st.markdown("""
+<style>
+    [data-testid="stSidebarNav"] {display: none !important;}
+    section[data-testid="stSidebarNav"] {display: none !important;}
+    nav[aria-label="Pages"] {display: none !important;}
+</style>
+""", unsafe_allow_html=True)
 
-# ADD THESE 2 LINES HERE ↓↓↓
+# ============================================================================
+# NAVIGATION COMPONENT
+# ============================================================================
 from nav_component import add_page_navigation
-add_page_navigation("Advanced Scanner", "🔍")
+add_page_navigation("Scan Results", "📊")
 
-# Rest of your code continues...
-st.title("🔍 Advanced SEO Scanner")
-
+# ============================================================================
+# DATABASE CONNECTION
+# ============================================================================
 @st.cache_resource
 def get_supabase():
     """Initialize Supabase client"""
@@ -49,7 +49,9 @@ def get_supabase():
         st.error(f"Database error: {e}")
         return None
 
-# Check authentication
+# ============================================================================
+# AUTHENTICATION CHECK
+# ============================================================================
 if 'user' not in st.session_state or not st.session_state.user:
     st.warning("⚠️ Please log in to view scan results")
     if st.button("Go to Login"):
@@ -65,12 +67,16 @@ else:
 
 supabase = get_supabase()
 
-# Header
+# ============================================================================
+# HEADER
+# ============================================================================
 st.title("📊 SEO Scan Results")
 st.markdown("View and analyze your website scans")
 st.markdown("---")
 
-# Show detailed report if scan is selected
+# ============================================================================
+# DETAILED REPORT VIEW (when scan is selected)
+# ============================================================================
 if 'selected_scan_id' in st.session_state:
     scan_id = st.session_state['selected_scan_id']
     
@@ -101,7 +107,9 @@ if 'selected_scan_id' in st.session_state:
     
     st.markdown("---")
     
-    # Display scan details
+    # ========================================================================
+    # SCAN OVERVIEW
+    # ========================================================================
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -121,7 +129,9 @@ if 'selected_scan_id' in st.session_state:
         
     st.markdown("---")
     
-    # Display results
+    # ========================================================================
+    # DISPLAY RESULTS
+    # ========================================================================
     results = scan.get('results')
     if results:
         if isinstance(results, str):
@@ -163,7 +173,9 @@ if 'selected_scan_id' in st.session_state:
                     st.write(f"**Title:** {meta.get('title', 'Missing')}")
                     st.write(f"**Length:** {meta.get('title_length', 0)} chars")
                 with col2:
-                    st.write(f"**Description:** {meta.get('description', 'Missing')[:100]}...")
+                    desc = meta.get('description', 'Missing')
+                    desc_preview = desc[:100] + "..." if len(desc) > 100 else desc
+                    st.write(f"**Description:** {desc_preview}")
                     st.write(f"**Length:** {meta.get('description_length', 0)} chars")
                 st.markdown("---")
             
@@ -267,6 +279,9 @@ if 'selected_scan_id' in st.session_state:
         if st.button("🔄 Re-scan", use_container_width=True):
             st.info("Re-scan feature coming soon!")
 
+# ============================================================================
+# LIST VIEW (show all scans)
+# ============================================================================
 else:
     # Fetch user's scans
     scans = []
@@ -285,7 +300,7 @@ else:
     if not scans:
         st.info("🔍 No scans yet. Create your first scan to get started!")
         if st.button("🎯 New Scan", type="primary"):
-            st.switch_page("pages/2_New_Scan.py")
+            st.switch_page("pages/2_seo_scanner.py")
         st.stop()
 
     # Display scans
@@ -361,11 +376,13 @@ else:
             
             with col4:
                 if st.button("🗑️", key=f"del_{scan_id}"):
-                    try:
-                        supabase.table('seo_scans').delete().eq('id', scan_id).execute()
-                        st.success("Deleted!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                    if supabase:
+                        try:
+                            supabase.table('seo_scans').delete().eq('id', scan_id).execute()
+                            st.success("Deleted!")
+                            time.sleep(0.5)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
             
             st.markdown("---")

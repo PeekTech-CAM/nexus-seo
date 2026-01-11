@@ -57,7 +57,7 @@ PLANS = {
 
 # ADMIN EMAILS - Only these can access admin panel
 ADMIN_EMAILS = [
-    "kamal@nexusseo.com",  # Replace with your actual email
+    "moroccoboy1990@gmail.com",  # Replace with your actual email
     "admin@nexusseo.com"
 ]
 
@@ -303,11 +303,11 @@ def render_admin_dashboard():
     with st.sidebar:
         # Logo in sidebar
         try:
-            st.image("logo.png", width=80)
-            st.markdown("<h3 style='text-align: center; margin-top: 0.5rem;'>Nexus SEO</h3>", unsafe_allow_html=True)
+            st.image("logo.png", width=160)  # Bigger logo
         except:
             st.markdown("<h2 style='text-align: center; color: #6366f1;'>🎯</h2>", unsafe_allow_html=True)
-            st.markdown("<h3 style='text-align: center;'>Nexus SEO</h3>", unsafe_allow_html=True)
+        
+        st.markdown("<h3 style='text-align: center; margin-top: 0.5rem;'>Nexus SEO</h3>", unsafe_allow_html=True)
         
         st.markdown("## 🔐 ADMIN PANEL")
         st.markdown("---")
@@ -472,56 +472,62 @@ def render_user_dashboard():
     
     st.markdown("---")
     
-    # Main Features
+    # Main Features - Symmetric and Beautiful
     st.markdown("## 🚀 Main Features")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown("""
-        <div style="background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center;">
-            <h2 style="font-size: 3rem; margin: 0;">🧠</h2>
-            <h3>Advanced AI Scanner</h3>
-            <p style="color: #6b7280;">Multi-agent AI analysis with comprehensive insights</p>
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2.5rem 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); text-align: center; min-height: 320px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="font-size: 4rem; margin-bottom: 1rem;">🧠</div>
+                <h2 style="color: white; margin: 0 0 1rem 0; font-size: 1.5rem;">Advanced AI Scanner</h2>
+                <p style="color: rgba(255,255,255,0.9); font-size: 1rem; line-height: 1.6;">Multi-agent AI system analyzing technical SEO, content strategy, and competitive intelligence</p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
         st.markdown("<br/>", unsafe_allow_html=True)
         
         if can_scan():
-            if st.button("🚀 Start Advanced Scan", use_container_width=True, type="primary"):
+            if st.button("🚀 Start Advanced Scan", use_container_width=True, type="primary", key="scan_main"):
                 st.switch_page("pages/3_Advanced_Scanner.py")
         else:
-            st.error(f"❌ Scan limit reached ({int(get_scans_limit())} scans/month)")
-            if st.button("⚡ Upgrade Plan", use_container_width=True):
+            st.error(f"❌ Limit reached ({int(get_scans_limit())} scans/month)")
+            if st.button("⚡ Upgrade Plan", use_container_width=True, key="upgrade_scan"):
                 st.switch_page("pages/4_Billing.py")
     
     with col2:
         st.markdown("""
-        <div style="background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center;">
-            <h2 style="font-size: 3rem; margin: 0;">📊</h2>
-            <h3>Scan History</h3>
-            <p style="color: #6b7280;">View and manage your previous reports</p>
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 2.5rem 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(240, 147, 251, 0.3); text-align: center; min-height: 320px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
+                <h2 style="color: white; margin: 0 0 1rem 0; font-size: 1.5rem;">Scan History</h2>
+                <p style="color: rgba(255,255,255,0.9); font-size: 1rem; line-height: 1.6;">Access all your previous SEO reports, track progress over time, and download detailed insights</p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
         st.markdown("<br/>", unsafe_allow_html=True)
         
-        if st.button("📂 View History", use_container_width=True):
+        if st.button("📂 View History", use_container_width=True, key="history_main"):
             st.switch_page("pages/3_Scan_Results.py")
     
     with col3:
         st.markdown("""
-        <div style="background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center;">
-            <h2 style="font-size: 3rem; margin: 0;">💳</h2>
-            <h3>Upgrade Plan</h3>
-            <p style="color: #6b7280;">Get more scans and unlock features</p>
+        <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 2.5rem 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(250, 112, 154, 0.3); text-align: center; min-height: 320px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="font-size: 4rem; margin-bottom: 1rem;">💎</div>
+                <h2 style="color: white; margin: 0 0 1rem 0; font-size: 1.5rem;">Upgrade Plan</h2>
+                <p style="color: rgba(255,255,255,0.9); font-size: 1rem; line-height: 1.6;">Unlock unlimited scans, advanced AI agents, PDF reports, and premium features</p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
         st.markdown("<br/>", unsafe_allow_html=True)
         
-        if st.button("⚡ Upgrade Now", use_container_width=True, type="primary"):
+        if st.button("⚡ Upgrade Now", use_container_width=True, type="primary", key="upgrade_main"):
             st.switch_page("pages/4_Billing.py")
 
 if __name__ == "__main__":

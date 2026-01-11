@@ -30,7 +30,10 @@ def add_page_navigation(page_title, page_icon="📄"):
     with col1:
         if st.button("⬅️ Back", key="back_to_home", use_container_width=True, type="secondary"):
             st.session_state.current_page = 'home'
-            st.switch_page("app.py")
+            try:
+                st.switch_page("app.py")
+            except Exception:
+                st.rerun()
     
     with col2:
         st.markdown(f"""
@@ -44,7 +47,10 @@ def add_page_navigation(page_title, page_icon="📄"):
     with col3:
         if st.button("🏠 Home", key="go_home", use_container_width=True, type="primary"):
             st.session_state.current_page = 'home'
-            st.switch_page("app.py")
+            try:
+                st.switch_page("app.py")
+            except Exception:
+                st.rerun()
     
     st.markdown("---")
 
@@ -62,22 +68,32 @@ def add_sidebar_navigation():
         st.markdown("### 🧭 Quick Navigation")
         
         if st.button("🏠 Dashboard", use_container_width=True, key="sidebar_home"):
-            st.switch_page("app.py")
+            try:
+                st.switch_page("app.py")
+            except Exception:
+                st.rerun()
         
         st.markdown("---")
         st.markdown("**📍 Main Pages**")
         
-        if st.button("🔍 Scanner", use_container_width=True, key="sidebar_scanner"):
-            st.switch_page("pages/Advanced_Scanner.py")
+        # Updated page paths to match your actual file names
+        nav_items = [
+            ("🔍 Scanner", "pages/1_dashboard.py"),
+            ("🎯 SEO Scanner", "pages/2_seo_scanner.py"),
+            ("📊 Scan Results", "pages/2_scan_results.py"),
+            ("🔍 Advanced Scanner", "pages/3_advanced_scanner.py"),
+            ("💳 Billing", "pages/4_billing.py"),
+            ("🔍 Check Prices", "pages/check_prices.py"),
+        ]
         
-        if st.button("📊 Results", use_container_width=True, key="sidebar_results"):
-            st.switch_page("pages/3_Scan_Results.py")
-        
-        if st.button("💳 Billing", use_container_width=True, key="sidebar_billing"):
-            st.switch_page("pages/4_Billing.py")
-        
-        if st.button("💰 Prices", use_container_width=True, key="sidebar_prices"):
-            st.switch_page("pages/5_Check_Prices.py")
+        for label, page_path in nav_items:
+            # Create unique key from label
+            key = f"sidebar_{label.replace(' ', '_').lower()}"
+            if st.button(label, use_container_width=True, key=key):
+                try:
+                    st.switch_page(page_path)
+                except Exception as e:
+                    st.error(f"Page not found: {page_path}")
         
         st.markdown("---")
         st.caption("🎯 Nexus SEO Intelligence")
@@ -98,12 +114,90 @@ def add_footer_quick_actions():
     
     with col1:
         if st.button("🔍 New Scan", use_container_width=True, key="footer_scan"):
-            st.switch_page("pages/Advanced_Scanner.py")
+            try:
+                st.switch_page("pages/2_seo_scanner.py")
+            except Exception:
+                st.error("Scanner page not found")
     
     with col2:
         if st.button("📊 View Results", use_container_width=True, key="footer_results"):
-            st.switch_page("pages/3_Scan_Results.py")
+            try:
+                st.switch_page("pages/2_scan_results.py")
+            except Exception:
+                st.error("Results page not found")
     
     with col3:
         if st.button("🏠 Dashboard", use_container_width=True, key="footer_home"):
-            st.switch_page("app.py")
+            try:
+                st.switch_page("app.py")
+            except Exception:
+                st.rerun()
+
+
+def get_user_info():
+    """
+    Helper function to get current user info from session state
+    Returns user object or None
+    """
+    if 'user' in st.session_state:
+        return st.session_state.user
+    return None
+
+
+def require_auth(redirect_to="app.py"):
+    """
+    Helper function to require authentication
+    Redirects to login if user is not authenticated
+    
+    Usage:
+        from nav_component import require_auth
+        require_auth()  # At top of protected pages
+    """
+    if 'user' not in st.session_state or not st.session_state.user:
+        st.warning("⚠️ Please log in to access this page")
+        if st.button("Go to Login", type="primary"):
+            try:
+                st.switch_page(redirect_to)
+            except Exception:
+                st.rerun()
+        st.stop()
+    
+    return st.session_state.user
+
+
+def add_user_menu():
+    """
+    Add user menu to sidebar with profile info and logout
+    
+    Usage:
+        from nav_component import add_user_menu
+        add_user_menu()
+    """
+    user = get_user_info()
+    
+    if user:
+        with st.sidebar:
+            st.markdown("---")
+            st.markdown("### 👤 User Menu")
+            
+            # Show user email
+            if isinstance(user, dict):
+                email = user.get('email', 'Unknown')
+                tier = user.get('tier', 'FREE').upper()
+            else:
+                email = getattr(user, 'email', 'Unknown')
+                tier = 'FREE'
+            
+            st.markdown(f"**Email:** {email}")
+            st.markdown(f"**Plan:** {tier}")
+            
+            st.markdown("---")
+            
+            if st.button("🚪 Logout", use_container_width=True, type="secondary", key="sidebar_logout"):
+                # Clear session state
+                st.session_state.clear()
+                st.success("Logged out successfully!")
+                try:
+                    st.switch_page("app.py")
+                except Exception:
+                    st.rerun()

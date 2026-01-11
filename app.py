@@ -1,6 +1,6 @@
 """
 NEXUS SEO INTELLIGENCE - Complete SaaS Platform
-With Logo, Plans (Demo/Pro/Agency/Elite), Admin Panel
+Fixed: Demo users only see Scanner and Results (no admin features)
 """
 
 import streamlit as st
@@ -57,11 +57,11 @@ PLANS = {
 
 # ADMIN EMAILS - Only these can access admin panel
 ADMIN_EMAILS = [
-    "moroccoboy1990@gmail.com",  # Replace with your actual email
+    "moroccoboy1990@gmail.com",
     "admin@nexusseo.com"
 ]
 
-# CSS - Hide Streamlit branding and show logo
+# CSS - Enhanced styling
 st.markdown("""
 <style>
     .main { 
@@ -127,6 +127,22 @@ st.markdown("""
         font-weight: bold;
         margin: 0.5rem 0;
     }
+    
+    /* Demo banner */
+    .demo-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        text-align: center;
+        margin: 1rem 0;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -158,8 +174,15 @@ if 'scans_used' not in st.session_state:
 
 # Helper functions
 def is_admin():
+    """Check if current user is admin"""
     if st.session_state.user:
         return st.session_state.user.email in ADMIN_EMAILS
+    return False
+
+def is_demo_user():
+    """Check if current user is demo user"""
+    if st.session_state.user:
+        return st.session_state.user.id == 'demo_user' or st.session_state.user_plan == 'demo'
     return False
 
 def has_feature(feature):
@@ -199,13 +222,18 @@ def main():
     else:
         load_user_data()
         
+        # Admin users see admin panel
         if is_admin():
             render_admin_dashboard()
+        # Demo users see simplified dashboard
+        elif is_demo_user():
+            render_demo_dashboard()
+        # Regular paid users see full dashboard
         else:
             render_user_dashboard()
 
 def render_login():
-    """Login page - clean without logo in center"""
+    """Login page"""
     
     # Logo in sidebar
     with st.sidebar:
@@ -297,13 +325,117 @@ def render_login():
                         except Exception as e:
                             st.error(f"❌ Signup failed: {str(e)}")
 
+def render_demo_dashboard():
+    """
+    CLEAN DEMO DASHBOARD
+    Only shows: Scanner and Results (NO admin features)
+    """
+    
+    with st.sidebar:
+        # Logo
+        try:
+            st.image("logo.png", width=80)
+            st.markdown("<h3 style='text-align: center; margin-top: 0.5rem;'>Nexus SEO</h3>", unsafe_allow_html=True)
+        except:
+            st.markdown("<h2 style='text-align: center; color: #6366f1;'>🎯</h2>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center;'>Nexus SEO</h3>", unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # Demo badge
+        st.markdown('<span class="plan-badge badge-demo">Demo Plan</span>', unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # Scans remaining
+        scans_left = 2 - st.session_state.scans_used
+        st.markdown(f"""
+        <div style="text-align: center; padding: 1rem; background: #f3f4f6; border-radius: 10px;">
+            <div style="font-size: 2rem; font-weight: bold; color: #6366f1;">{scans_left}/2</div>
+            <div style="font-size: 0.9rem; color: #6b7280;">Free Scans Left</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # ONLY show logout button (NO admin features for demo)
+        if st.button("🚪 Exit Demo", use_container_width=True):
+            st.session_state.user = None
+            st.rerun()
+    
+    # Main content
+    st.title("🎮 Demo Mode")
+    
+    # Demo banner
+    st.markdown(f"""
+    <div class="demo-banner">
+        <h3 style="margin: 0;">🎯 Welcome to Demo Mode!</h3>
+        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">You have {2 - st.session_state.scans_used} free scans remaining. Upgrade for unlimited access!</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # ONLY 2 FEATURES FOR DEMO
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 3rem 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); text-align: center; min-height: 350px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="font-size: 5rem; margin-bottom: 1.5rem;">🧠</div>
+                <h2 style="color: white; margin: 0 0 1rem 0; font-size: 1.8rem;">AI Scanner</h2>
+                <p style="color: rgba(255,255,255,0.95); font-size: 1.1rem; line-height: 1.6;">Advanced AI-powered SEO analysis with real-time insights and recommendations</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br/>", unsafe_allow_html=True)
+        
+        if can_scan():
+            if st.button("🚀 Start Scan", use_container_width=True, type="primary", key="demo_scan"):
+                st.switch_page("pages/3_Advanced_Scanner.py")
+        else:
+            st.error("❌ No scans remaining")
+            if st.button("⚡ Upgrade to Continue", use_container_width=True, key="demo_upgrade1"):
+                st.switch_page("pages/4_Billing.py")
+    
+    with col2:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 3rem 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(240, 147, 251, 0.3); text-align: center; min-height: 350px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="font-size: 5rem; margin-bottom: 1.5rem;">📊</div>
+                <h2 style="color: white; margin: 0 0 1rem 0; font-size: 1.8rem;">Scan Results</h2>
+                <p style="color: rgba(255,255,255,0.95); font-size: 1.1rem; line-height: 1.6;">View your previous scan reports and track your SEO improvements over time</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br/>", unsafe_allow_html=True)
+        
+        if st.button("📂 View Results", use_container_width=True, key="demo_results"):
+            st.switch_page("pages/3_Scan_Results.py")
+    
+    st.markdown("---")
+    
+    # Upgrade CTA
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 2rem; border-radius: 15px; text-align: center; margin-top: 2rem;">
+        <h2 style="color: white; margin: 0 0 1rem 0;">Ready for More? 🚀</h2>
+        <p style="color: rgba(255,255,255,0.95); font-size: 1.1rem; margin: 0 0 1.5rem 0;">Upgrade to Pro and get unlimited scans, advanced AI features, and priority support!</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("⚡ View Plans & Pricing", use_container_width=True, type="primary", key="demo_pricing"):
+        st.switch_page("pages/4_Billing.py")
+
 def render_admin_dashboard():
     """Admin-only dashboard"""
     
     with st.sidebar:
-        # Logo in sidebar
+        # Logo
         try:
-            st.image("logo.png", width=160)  # Bigger logo
+            st.image("logo.png", width=160)
         except:
             st.markdown("<h2 style='text-align: center; color: #6366f1;'>🎯</h2>", unsafe_allow_html=True)
         
@@ -388,10 +520,10 @@ def render_admin_dashboard():
         st.warning("🚧 Settings coming soon!")
 
 def render_user_dashboard():
-    """Regular user dashboard"""
+    """Regular user dashboard (Pro/Agency/Elite)"""
     
     with st.sidebar:
-        # Logo in sidebar
+        # Logo
         try:
             st.image("logo.png", width=80)
             st.markdown("<h3 style='text-align: center; margin-top: 0.5rem;'>Nexus SEO</h3>", unsafe_allow_html=True)
@@ -408,11 +540,6 @@ def render_user_dashboard():
         st.markdown("---")
         st.markdown(f"**{st.session_state.user.email}**")
         
-        if is_admin():
-            st.markdown("---")
-            if st.button("🔐 Admin Panel", use_container_width=True):
-                st.rerun()
-        
         st.markdown("---")
         
         if st.button("🚪 Logout", use_container_width=True):
@@ -421,9 +548,6 @@ def render_user_dashboard():
     
     st.title(f"Welcome back! 👋")
     st.markdown("### Your SEO Command Center")
-    
-    if st.session_state.user_plan == 'demo':
-        st.info(f"🎮 **Demo Mode** - You have **{2 - st.session_state.scans_used}** free scans remaining. Upgrade for unlimited access!")
     
     st.markdown("---")
     
@@ -472,7 +596,7 @@ def render_user_dashboard():
     
     st.markdown("---")
     
-    # Main Features - Symmetric and Beautiful
+    # Main Features
     st.markdown("## 🚀 Main Features")
     
     col1, col2, col3 = st.columns(3)

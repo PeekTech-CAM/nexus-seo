@@ -1,279 +1,508 @@
-"""
-NEXUS SEO INTELLIGENCE - Billing Page (Fixed for Demo Users)
-"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus SEO - Pricing Plans</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-import streamlit as st
-import os
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
 
-st.set_page_config(
-    page_title="Billing & Subscription",
-    page_icon="💳",
-    layout="wide"
-)
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
 
-# Check if user is logged in
-if 'user' not in st.session_state or st.session_state.user is None:
-    st.warning("⚠️ Please login first")
-    if st.button("Go to Login"):
-        st.switch_page("app.py")
-    st.stop()
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
 
-# Get user info safely
-user_email = st.session_state.user.email
-user_plan = st.session_state.get('user_plan', 'demo')
-is_demo = (st.session_state.user.id == 'demo_user')
+        .header h1 {
+            font-size: 3rem;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
 
-# Stripe Payment Links
-YEARLY_PAYMENT_LINK = "https://buy.stripe.com/4gM5kD2R74kPcjL3o3ao804"
-MONTHLY_PAYMENT_LINK = "https://buy.stripe.com/dRm4gz3VbeZt0B36Afao803"
+        .header p {
+            font-size: 1.2rem;
+            color: #64748b;
+        }
 
-CREDITS_1000_LINK = "https://buy.stripe.com/test/1000credits"
-CREDITS_5000_LINK = "https://buy.stripe.com/test/5000credits"
-CREDITS_10000_LINK = "https://buy.stripe.com/test/10000credits"
+        .billing-toggle {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-bottom: 3rem;
+        }
 
-# CSS
-st.markdown("""
-<style>
-    .plan-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
-        border-radius: 15px;
-        color: white;
-        margin: 1rem 0;
-    }
-    .price-tag {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin: 1rem 0;
-    }
-    .savings-badge {
-        background: #10b981;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        display: inline-block;
-        font-weight: bold;
-        margin: 0.5rem 0;
-    }
-</style>
-""", unsafe_allow_html=True)
+        .billing-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 3px solid transparent;
+            min-width: 280px;
+        }
 
-# Header
-try:
-    st.image("logo.png", width=100)
-except:
-    pass
+        .billing-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
 
-st.title("💳 Billing & Subscription")
-st.markdown("### Choose the perfect plan for your SEO needs")
+        .billing-card.annual {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
 
-# User info
-st.info(f"👤 Logged in as: **{user_email}** | Current Plan: **{user_plan.upper()}**")
+        .billing-card.monthly {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
 
-if is_demo:
-    st.warning("🎮 **Demo Mode** - Upgrade to unlock all features and unlimited scans!")
+        .billing-card.selected {
+            border: 3px solid #fbbf24;
+            transform: scale(1.05);
+        }
 
-st.markdown("---")
+        .billing-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
 
-# Billing cycle selection
-st.markdown("## 🎯 Select Your Billing Cycle")
+        .badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-top: 0.5rem;
+        }
 
-col1, col2 = st.columns(2)
+        .badge.save {
+            background: #10b981;
+            color: white;
+        }
 
-with col1:
-    st.markdown("""
-    <div class="plan-card">
-        <h2>💰 Annual Billing</h2>
-        <div class="savings-badge">💎 SAVE UP TO 20%</div>
-        <div class="price-tag">Best Value!</div>
-        
-        <div style="margin: 1rem 0; font-size: 1.1rem;">
-        <strong>What's included:</strong><br/>
-        ✅ Pro Yearly - €2,457/year<br/>
-        ✅ Agency Yearly - €1,430/year<br/>
-        ✅ Elite Yearly - Premium features<br/>
-        <br/>
-        <strong>All plans include:</strong><br/>
-        🎨 White label reports<br/>
-        🚀 Priority support<br/>
-        🔓 All features unlocked<br/>
-        💳 One payment per year<br/>
+        .badge.flexible {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .billing-tagline {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 1.5rem 0;
+        }
+
+        .features {
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .feature-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 0.8rem;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 0.5rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin: 0.7rem 0;
+            font-size: 1rem;
+        }
+
+        .feature-icon {
+            font-size: 1.3rem;
+        }
+
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .plan-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .plan-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .plan-card.featured {
+            border: 3px solid #fbbf24;
+            transform: scale(1.05);
+        }
+
+        .plan-card.featured::before {
+            content: "⭐ MOST POPULAR";
+            position: absolute;
+            top: 20px;
+            right: -35px;
+            background: #fbbf24;
+            color: #1e293b;
+            padding: 0.5rem 3rem;
+            transform: rotate(45deg);
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .plan-name {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+
+        .plan-price {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin: 1rem 0;
+        }
+
+        .plan-price span {
+            font-size: 1.2rem;
+            color: #64748b;
+        }
+
+        .plan-description {
+            color: #64748b;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .plan-features li {
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .plan-features li:last-child {
+            border-bottom: none;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .billing-toggle {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .plans-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .plan-card.featured {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Select Your Billing Cycle</h1>
+            <p>Choose the plan that fits your needs</p>
+        </div>
+
+        <div class="billing-toggle">
+            <div class="billing-card annual selected" onclick="showAnnual()">
+                <div class="billing-header">
+                    💰 Annual Billing
+                </div>
+                <div class="badge save">💸 SAVE UP TO 20%</div>
+                <div class="billing-tagline">Best Value!</div>
+                
+                <div class="features">
+                    <div class="feature-section">
+                        <div class="feature-title">What's included:</div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Pro Yearly - €2,457/year</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Agency Yearly - €1,430/year</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Elite Yearly - Premium features</span>
+                        </div>
+                    </div>
+
+                    <div class="feature-section">
+                        <div class="feature-title">All plans include:</div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🎨</span>
+                            <span>White label reports</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🚀</span>
+                            <span>Priority support</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🔥</span>
+                            <span>All features unlocked</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">💳</span>
+                            <span>One payment per year</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="billing-card monthly" onclick="showMonthly()">
+                <div class="billing-header">
+                    📅 Monthly Billing
+                </div>
+                <div class="badge flexible">✨ FLEXIBLE</div>
+                <div class="billing-tagline">Pay as you go</div>
+                
+                <div class="features">
+                    <div class="feature-section">
+                        <div class="feature-title">What's included:</div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Pro Monthly - Flexible pricing</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Agency Monthly - Scale easily</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">✅</span>
+                            <span>Elite Monthly - No commitment</span>
+                        </div>
+                    </div>
+
+                    <div class="feature-section">
+                        <div class="feature-title">All plans include:</div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🎨</span>
+                            <span>White label reports</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🚀</span>
+                            <span>Priority support</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🔥</span>
+                            <span>All features unlocked</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🔄</span>
+                            <span>Cancel anytime</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="annual-plans" class="plans-grid">
+            <div class="plan-card">
+                <div class="plan-name">Pro</div>
+                <div class="plan-price">€2,457<span>/year</span></div>
+                <div class="plan-description">Perfect for freelancers and small businesses looking to boost their SEO</div>
+                <ul class="plan-features">
+                    <li>✅ 50 scans per month</li>
+                    <li>✅ 100,000 AI credits</li>
+                    <li>✅ Advanced AI analysis</li>
+                    <li>✅ JSON export</li>
+                    <li>✅ Priority support</li>
+                    <li>✅ Save €131/year</li>
+                </ul>
+                <button class="btn btn-primary">🎯 View Yearly Plans</button>
+            </div>
+
+            <div class="plan-card featured">
+                <div class="plan-name">Agency</div>
+                <div class="plan-price">€1,430<span>/year</span></div>
+                <div class="plan-description">For agencies managing multiple clients with advanced features</div>
+                <ul class="plan-features">
+                    <li>✅ 200 scans per month</li>
+                    <li>✅ 500,000 AI credits</li>
+                    <li>✅ PDF & JSON exports</li>
+                    <li>✅ White label reports</li>
+                    <li>✅ API access</li>
+                    <li>✅ Team collaboration</li>
+                    <li>✅ Save €358/year</li>
+                </ul>
+                <button class="btn btn-primary">🎯 View Yearly Plans</button>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">Elite</div>
+                <div class="plan-price">€43,000<span>/year</span></div>
+                <div class="plan-description">Enterprise solution with unlimited everything and dedicated support</div>
+                <ul class="plan-features">
+                    <li>✅ Unlimited scans</li>
+                    <li>✅ 10M AI credits</li>
+                    <li>✅ Custom AI training</li>
+                    <li>✅ Dedicated manager</li>
+                    <li>✅ Custom integrations</li>
+                    <li>✅ All features included</li>
+                    <li>✅ Save €4,788/year</li>
+                </ul>
+                <button class="btn btn-primary">🎯 View Yearly Plans</button>
+            </div>
+        </div>
+
+        <div id="monthly-plans" class="plans-grid" style="display: none;">
+            <div class="plan-card">
+                <div class="plan-name">Pro</div>
+                <div class="plan-price">€49<span>/month</span></div>
+                <div class="plan-description">Perfect for freelancers and small businesses looking to boost their SEO</div>
+                <ul class="plan-features">
+                    <li>✅ 50 scans per month</li>
+                    <li>✅ 100,000 AI credits</li>
+                    <li>✅ Advanced AI analysis</li>
+                    <li>✅ JSON export</li>
+                    <li>✅ Priority support</li>
+                    <li>✅ Cancel anytime</li>
+                </ul>
+                <button class="btn btn-secondary">📅 View Monthly Plans</button>
+            </div>
+
+            <div class="plan-card featured">
+                <div class="plan-name">Agency</div>
+                <div class="plan-price">€149<span>/month</span></div>
+                <div class="plan-description">For agencies managing multiple clients with advanced features</div>
+                <ul class="plan-features">
+                    <li>✅ 200 scans per month</li>
+                    <li>✅ 500,000 AI credits</li>
+                    <li>✅ PDF & JSON exports</li>
+                    <li>✅ White label reports</li>
+                    <li>✅ API access</li>
+                    <li>✅ Team collaboration</li>
+                    <li>✅ Cancel anytime</li>
+                </ul>
+                <button class="btn btn-secondary">📅 View Monthly Plans</button>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">Elite</div>
+                <div class="plan-price">€399<span>/month</span></div>
+                <div class="plan-description">Enterprise solution with unlimited everything and dedicated support</div>
+                <ul class="plan-features">
+                    <li>✅ Unlimited scans</li>
+                    <li>✅ 10M AI credits</li>
+                    <li>✅ Custom AI training</li>
+                    <li>✅ Dedicated manager</li>
+                    <li>✅ Custom integrations</li>
+                    <li>✅ All features included</li>
+                    <li>✅ Cancel anytime</li>
+                </ul>
+                <button class="btn btn-secondary">📅 View Monthly Plans</button>
+            </div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<br/>", unsafe_allow_html=True)
-    
-    if st.button("🎯 View Yearly Plans", type="primary", use_container_width=True, key="yearly_btn"):
-        st.markdown(f"""
-        ### 🔗 Opening Stripe Checkout...
-        
-        Click the link below if it doesn't open automatically:
-        
-        **[→ Open Yearly Plans Checkout]({YEARLY_PAYMENT_LINK})**
-        """)
-        st.markdown(f'<meta http-equiv="refresh" content="1; url={YEARLY_PAYMENT_LINK}">', unsafe_allow_html=True)
 
-with col2:
-    st.markdown("""
-    <div class="plan-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-        <h2>📅 Monthly Billing</h2>
-        <div class="savings-badge" style="background: #3b82f6;">✨ FLEXIBLE</div>
-        <div class="price-tag">Pay as you go</div>
-        
-        <div style="margin: 1rem 0; font-size: 1.1rem;">
-        <strong>What's included:</strong><br/>
-        ✅ Pro Monthly - Flexible pricing<br/>
-        ✅ Agency Monthly - Scale easily<br/>
-        ✅ Elite Monthly - No commitment<br/>
-        <br/>
-        <strong>All plans include:</strong><br/>
-        🎨 White label reports<br/>
-        🚀 Priority support<br/>
-        🔓 All features unlocked<br/>
-        🔄 Cancel anytime<br/>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<br/>", unsafe_allow_html=True)
-    
-    if st.button("📆 View Monthly Plans", use_container_width=True, key="monthly_btn"):
-        st.markdown(f"""
-        ### 🔗 Opening Stripe Checkout...
-        
-        Click the link below if it doesn't open automatically:
-        
-        **[→ Open Monthly Plans Checkout]({MONTHLY_PAYMENT_LINK})**
-        """)
-        st.markdown(f'<meta http-equiv="refresh" content="1; url={MONTHLY_PAYMENT_LINK}">', unsafe_allow_html=True)
+    <script>
+        function showAnnual() {
+            document.getElementById('annual-plans').style.display = 'grid';
+            document.getElementById('monthly-plans').style.display = 'none';
+            
+            document.querySelectorAll('.billing-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector('.billing-card.annual').classList.add('selected');
+        }
 
-st.markdown("---")
-
-# Plan comparison
-st.markdown("## 📊 Compare Plans")
-
-with st.expander("🔍 Detailed Plan Comparison", expanded=False):
-    st.markdown("""
-    | Feature | Pro | Agency | Elite |
-    |---------|-----|--------|-------|
-    | **SEO Cases/Month** | 50 | 200 | Unlimited |
-    | **Annual Credits** | 100,000 | 500,000 | 10,000,000 |
-    | **AI Agents** | 2 | 3 | 4 |
-    | **White Label Reports** | ✅ | ✅ | ✅ |
-    | **Priority Support** | ✅ | ✅ | ✅ |
-    | **Team Collaboration** | ❌ | ✅ | ✅ |
-    | **Dedicated Manager** | ❌ | ❌ | ✅ |
-    | **API Access** | ❌ | ✅ | ✅ |
-    | **Custom Integrations** | ❌ | ❌ | ✅ |
-    | **PDF Export** | ❌ | ✅ | ✅ |
-    """)
-
-# Credit Packs
-st.markdown("---")
-st.markdown("## 💎 Buy Credit Packs")
-st.info("💡 One-time purchases • Never expire • Work with any plan")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("""
-    <div style="border: 2px solid #6366f1; border-radius: 15px; padding: 2rem; text-align: center; background: white;">
-        <h3>🔷 Starter Pack</h3>
-        <div style="font-size: 2.5rem; font-weight: bold; color: #6366f1; margin: 1rem 0;">
-            €10.00
-        </div>
-        <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">
-            1,000 Credits
-        </div>
-        <p style="color: #6b7280;">
-            ✅ One-time purchase<br/>
-            ✅ Never expires<br/>
-            ✅ Instant delivery
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<br/>", unsafe_allow_html=True)
-    if st.button("💳 Buy 1,000 Credits", use_container_width=True, key="credits_1000"):
-        st.markdown(f"**[→ Complete Purchase]({CREDITS_1000_LINK})**")
-
-with col2:
-    st.markdown("""
-    <div style="border: 3px solid #8b5cf6; border-radius: 15px; padding: 2rem; text-align: center; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);">
-        <div style="background: #8b5cf6; color: white; padding: 0.25rem 1rem; border-radius: 20px; display: inline-block; margin-bottom: 1rem; font-weight: bold;">
-            🔥 POPULAR
-        </div>
-        <h3>🔶 Growth Pack</h3>
-        <div style="font-size: 2.5rem; font-weight: bold; color: #8b5cf6; margin: 1rem 0;">
-            €40.00
-        </div>
-        <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">
-            5,000 Credits
-        </div>
-        <p style="color: #6b7280;">
-            ✅ One-time purchase<br/>
-            ✅ Never expires<br/>
-            ✅ Instant delivery
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<br/>", unsafe_allow_html=True)
-    if st.button("💳 Buy 5,000 Credits", use_container_width=True, type="primary", key="credits_5000"):
-        st.markdown(f"**[→ Complete Purchase]({CREDITS_5000_LINK})**")
-
-with col3:
-    st.markdown("""
-    <div style="border: 2px solid #10b981; border-radius: 15px; padding: 2rem; text-align: center; background: white;">
-        <h3>🔸 Enterprise Pack</h3>
-        <div style="font-size: 2.5rem; font-weight: bold; color: #10b981; margin: 1rem 0;">
-            €75.00
-        </div>
-        <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">
-            10,000 Credits
-        </div>
-        <p style="color: #6b7280;">
-            ✅ One-time purchase<br/>
-            ✅ Never expires<br/>
-            ✅ Instant delivery
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<br/>", unsafe_allow_html=True)
-    if st.button("💳 Buy 10,000 Credits", use_container_width=True, key="credits_10000"):
-        st.markdown(f"**[→ Complete Purchase]({CREDITS_10000_LINK})**")
-
-# FAQ
-st.markdown("---")
-st.markdown("## ❓ Frequently Asked Questions")
-
-with st.expander("💰 How much can I save with annual billing?"):
-    st.markdown("""
-    Annual billing offers up to **20% savings** compared to monthly billing:
-    - Pay once a year instead of 12 times
-    - Lock in your rate for the full year
-    - Get premium features at a lower cost
-    """)
-
-with st.expander("🔄 Can I change plans later?"):
-    st.markdown("""
-    Yes! You can:
-    - Upgrade to a higher plan anytime
-    - Switch between monthly and yearly billing
-    - Changes take effect on your next billing cycle
-    """)
-
-with st.expander("💳 What payment methods do you accept?"):
-    st.markdown("""
-    We accept all major payment methods through Stripe:
-    - Credit/Debit cards (Visa, Mastercard, Amex)
-    - Apple Pay
-    - Google Pay
-    - Bank transfers (for annual plans)
-    """)
-
-# Back button
-st.markdown("---")
-if st.button("← Back to Dashboard"):
-    st.switch_page("app.py")
+        function showMonthly() {
+            document.getElementById('annual-plans').style.display = 'none';
+            document.getElementById('monthly-plans').style.display = 'grid';
+            
+            document.querySelectorAll('.billing-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector('.billing-card.monthly').classList.add('selected');
+        }
+    </script>
+</body>
+</html>

@@ -57,7 +57,7 @@ PLANS = {
 
 # ADMIN EMAILS - Only these can access admin panel
 ADMIN_EMAILS = [
-    "kamal@nexusseo.com",  # Replace with your actual email
+    "moroccoboy1990@gmail.com",  # Replace with your actual email
     "admin@nexusseo.com"
 ]
 

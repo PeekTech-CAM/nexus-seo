@@ -57,7 +57,7 @@ PLANS = {
 
 # ADMIN EMAILS - Only these can access admin panel
 ADMIN_EMAILS = [
-    "moroccoboy1990@gmail.com",  # Replace with your actual email
+    "kamal@nexusseo.com",  # Replace with your actual email
     "admin@nexusseo.com"
 ]
 
@@ -74,6 +74,18 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
     [data-testid="stSidebarNav"] {display: none;}
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    }
+    
+    /* Logo in sidebar */
+    [data-testid="stSidebar"] img {
+        display: block;
+        margin: 1rem auto;
+        border-radius: 10px;
+    }
     
     .stButton > button {
         background: linear-gradient(135deg, #6366f1, #8b5cf6);
@@ -193,19 +205,27 @@ def main():
             render_user_dashboard()
 
 def render_login():
-    """Login page with logo"""
+    """Login page - clean without logo in center"""
+    
+    # Logo in sidebar
+    with st.sidebar:
+        try:
+            st.image("logo.png", width=120)
+        except:
+            st.markdown('<h1 style="color: #6366f1; font-size: 2.5rem; text-align: center;">🎯</h1>', unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div style="text-align: center; margin-top: 1rem;">
+            <h3 style="margin: 0;">Nexus SEO</h3>
+            <p style="color: #6b7280; font-size: 0.8rem;">Intelligence Platform</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Display Logo
-        try:
-            st.image("logo.png", width=150)
-        except:
-            st.markdown('<h1 style="color: #6366f1; font-size: 3rem; text-align: center; margin: 0;">🎯</h1>', unsafe_allow_html=True)
-        
         st.markdown("""
-        <div style="text-align: center; margin: 1rem 0 2rem 0;">
+        <div style="text-align: center; margin: 2rem 0;">
             <h1 style="margin: 0;">Nexus SEO Intelligence</h1>
             <p style="color: #6b7280; margin-top: 0.5rem;">AI-Powered SEO Analysis Platform</p>
         </div>

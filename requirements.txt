@@ -1,11 +1,10 @@
-﻿streamlit>=1.28.0
-beautifulsoup4>=4.12.0
-requests>=2.31.0
-fpdf>=1.7.2
-reportlab>=4.0.0
-python-dotenv>=1.0.0
-Pillow>=10.0.0
-
-# Optional but recommended
-pandas>=2.0.0
-numpy>=1.24.0
+﻿streamlit
+supabase
+python-dotenv
+requests
+beautifulsoup4
+lxml
+plotly
+google-generativeai
+reportlab
+stripe

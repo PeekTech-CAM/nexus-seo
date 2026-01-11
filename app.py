@@ -4,16 +4,18 @@ With Login, Dashboard, and Navigation
 """
 
 import streamlit as st
-import os
-from supabase import create_client
 
-# Page config MUST be first
+# Page config MUST be first - before ANY other imports
 st.set_page_config(
     page_title="Nexus SEO Intelligence",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Now import other modules
+import os
+from supabase import create_client
 
 # Modern CSS
 st.markdown("""

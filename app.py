@@ -1,6 +1,13 @@
-import streamlit as st
+"""
+NEXUS SEO INTELLIGENCE - Complete Modern App
+With Login, Dashboard, and Navigation
+"""
 
-# Page configuration - MUST be first Streamlit command
+import streamlit as st
+import os
+from supabase import create_client
+
+# Page config MUST be first
 st.set_page_config(
     page_title="Nexus SEO Intelligence",
     page_icon="🎯",
@@ -8,294 +15,362 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Modern CSS
 st.markdown("""
 <style>
-    .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 3rem 2rem;
-        border-radius: 20px;
-        color: white;
-        text-align: center;
-        margin: 2rem 0;
-        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    
+    * {
+        font-family: 'Inter', sans-serif;
     }
-    .feature-card {
-        background: white;
-        padding: 2rem;
-        border-radius: 15px;
-        border: 2px solid #e5e7eb;
-        text-align: center;
-        transition: all 0.3s;
-        height: 100%;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-    }
-    .feature-card:hover {
-        border-color: #667eea;
-        transform: translateY(-8px);
-        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.25);
-    }
-    .status-card {
-        background: #f9fafb;
-        padding: 1.5rem;
-        border-radius: 12px;
-        border-left: 5px solid #10b981;
-        margin: 1rem 0;
-    }
-    .cta-section {
-        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    
+    .hero-section {
+        background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
         padding: 3rem;
         border-radius: 20px;
-        text-align: center;
-        margin: 2rem 0;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
     }
+    
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
     .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
         border-radius: 10px;
         font-weight: 600;
-        transition: all 0.3s;
+        transition: all 0.3s ease;
     }
+    
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .feature-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Header
-st.markdown("""
-<div class="main-header">
-    <h1 style="font-size: 3.5rem; margin-bottom: 1rem;">🎯 Nexus SEO Intelligence</h1>
-    <h2 style="font-size: 1.8rem; font-weight: normal; opacity: 0.95; margin-bottom: 1.5rem;">
-        AI-Powered SEO Analysis Platform
-    </h2>
-    <p style="font-size: 1.3rem; opacity: 0.9;">
-        Analyze, Optimize, Dominate Search Rankings
-    </p>
-</div>
-""", unsafe_allow_html=True)
+# Initialize Supabase
+@st.cache_resource
+def get_supabase_client():
+    try:
+        supabase_url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
+        supabase_key = st.secrets.get("SUPABASE_KEY") or os.getenv("SUPABASE_KEY")
+    except:
+        from dotenv import load_dotenv
+        load_dotenv()
+        supabase_url = os.getenv('SUPABASE_URL')
+        supabase_key = os.getenv('SUPABASE_KEY')
+    
+    if not supabase_url or not supabase_key:
+        st.error("⚠️ Supabase credentials not configured")
+        st.stop()
+    
+    return create_client(supabase_url, supabase_key)
 
-# Quick Start CTA
-st.markdown("### 🚀 Ready to Boost Your SEO?")
+@st.cache_resource
+def get_service_client():
+    try:
+        supabase_url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
+        service_key = st.secrets.get("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    except:
+        supabase_url = os.getenv('SUPABASE_URL')
+        service_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if not service_key:
+        return None
+    
+    return create_client(supabase_url, service_key)
 
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
+supabase = get_supabase_client()
+service_supabase = get_service_client()
+
+# Initialize session state
+if 'user' not in st.session_state:
+    st.session_state.user = None
+
+def main():
+    if st.session_state.user is None:
+        render_login()
+    else:
+        render_dashboard()
+
+def render_login():
+    """Modern login page"""
+    
     st.markdown("""
-    <div class="cta-section">
-        <p style="font-size: 1.2rem; color: #4b5563; margin-bottom: 1.5rem;">
-            Start your AI-powered website analysis in seconds
+    <div class="hero-section">
+        <h1 style="font-size: 3rem; margin: 0;">🎯 Nexus SEO Intelligence</h1>
+        <p style="font-size: 1.3rem; margin-top: 1rem; opacity: 0.9;">
+            AI-Powered SEO Analysis Platform
+        </p>
+        <p style="font-size: 1rem; margin-top: 0.5rem; opacity: 0.8;">
+            Analyze • Optimize • Dominate Search Rankings
         </p>
     </div>
     """, unsafe_allow_html=True)
     
-    if st.button("🧠 Start AI Analysis Now", use_container_width=True, type="primary", key="start_scan"):
-        st.switch_page("pages/3_Advanced_Scanner.py")
-
-st.markdown("---")
-
-# System Status
-st.markdown("### ⚙️ System Status")
-
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.markdown("""
-    <div class="status-card">
-        <h3>🗄️ DATABASE</h3>
-        <h2 style="color: #10b981; margin: 0.5rem 0;">✓ Online</h2>
-        <p style="color: #6b7280; margin: 0;">Supabase</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown("""
-    <div class="status-card">
-        <h3>💳 PAYMENTS</h3>
-        <h2 style="color: #10b981; margin: 0.5rem 0;">✓ Active</h2>
-        <p style="color: #6b7280; margin: 0;">Stripe</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.markdown("""
-    <div class="status-card">
-        <h3>🤖 AI ENGINE</h3>
-        <h2 style="color: #10b981; margin: 0.5rem 0;">✓ Ready</h2>
-        <p style="color: #6b7280; margin: 0;">Gemini</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col4:
-    st.markdown("""
-    <div class="status-card">
-        <h3>📊 STATUS</h3>
-        <h2 style="color: #10b981; margin: 0.5rem 0;">✓ Online</h2>
-        <p style="color: #6b7280; margin: 0;">All Systems</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("---")
-
-# Features Grid
-st.markdown("### ✨ Platform Features")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("""
-    <div class="feature-card">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">🧠</div>
-        <h3>AI-Powered Scanner</h3>
-        <p style="color: #6b7280; margin: 1rem 0;">
-            Advanced analysis with automated solutions and actionable insights
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("→ Start Scanning", key="scan1", use_container_width=True):
-        st.switch_page("pages/3_Advanced_Scanner.py")
-
-with col2:
-    st.markdown("""
-    <div class="feature-card">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">⚡</div>
-        <h3>Instant Fixes</h3>
-        <p style="color: #6b7280; margin: 1rem 0;">
-            AI implements solutions automatically with one-click optimization
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("→ View Solutions", key="fix1", use_container_width=True):
-        st.switch_page("pages/3_Advanced_Scanner.py")
-
-with col3:
-    st.markdown("""
-    <div class="feature-card">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">📈</div>
-        <h3>Growth Tracking</h3>
-        <p style="color: #6b7280; margin: 1rem 0;">
-            Monitor improvements, track rankings, and measure ROI over time
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("→ View Analytics", key="track1", use_container_width=True):
-        st.switch_page("pages/3_Scan_Results.py")
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("""
-    <div class="feature-card">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
-        <h3>Keyword Opportunities</h3>
-        <p style="color: #6b7280; margin: 1rem 0;">
-            AI identifies 100+ untapped keywords where you can rank easily
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("→ Find Keywords", key="keywords1", use_container_width=True):
-        st.switch_page("pages/3_Advanced_Scanner.py")
-
-with col2:
-    st.markdown("""
-    <div class="feature-card">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">💻</div>
-        <h3>Code Generation</h3>
-        <p style="color: #6b7280; margin: 1rem 0;">
-            Get ready-to-use implementation code for all SEO fixes
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("→ Get Code", key="code1", use_container_width=True):
-        st.switch_page("pages/3_Advanced_Scanner.py")
-
-with col3:
-    st.markdown("""
-    <div class="feature-card">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
-        <h3>Detailed Reports</h3>
-        <p style="color: #6b7280; margin: 1rem 0;">
-            Export comprehensive PDF reports with all findings and solutions
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("→ View Sample", key="report1", use_container_width=True):
-        st.switch_page("pages/3_Advanced_Scanner.py")
-
-st.markdown("---")
-
-# Quick Actions
-st.markdown("### ⚡ Quick Actions")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    with st.container():
-        st.markdown("#### 🔍 Recent Scans")
-        if 'scan_results' in st.session_state and st.session_state.scan_results:
-            st.success(f"Last scan: {st.session_state.scan_results.get('url', 'N/A')}")
-            st.info(f"Score: {st.session_state.scan_results.get('score', 0)}/100")
-            if st.button("📊 View Last Results", use_container_width=True):
-                st.switch_page("pages/3_Scan_Results.py")
-        else:
-            st.info("No scans yet. Start your first analysis!")
-            if st.button("🚀 Start First Scan", use_container_width=True):
-                st.switch_page("pages/3_Advanced_Scanner.py")
-
-with col2:
-    with st.container():
-        st.markdown("#### 📈 Quick Stats")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.metric("Scans Today", "0")
-            st.metric("Issues Fixed", "0")
-        with col_b:
-            st.metric("Avg Score", "N/A")
-            st.metric("Opportunities", "0")
-
-st.markdown("---")
-
-# Getting Started Guide
-with st.expander("📚 Getting Started Guide", expanded=False):
-    st.markdown("""
-    ### How to Use Nexus SEO Intelligence
+    col1, col2, col3 = st.columns([1, 2, 1])
     
-    **Step 1: Run Your First Scan**
-    - Click "Start AI Analysis Now" above
-    - Enter your website URL
-    - Wait 30 seconds for AI analysis
-    
-    **Step 2: Review AI-Powered Solutions**
-    - See detailed issues with severity levels
-    - Get multiple AI-generated fix options
-    - View implementation code for each fix
-    
-    **Step 3: Implement Fixes**
-    - Click "Use" to select best solution
-    - Click "Implement AI Fix" for automatic implementation
-    - Or copy the code and implement manually
-    
-    **Step 4: Track Progress**
-    - Export PDF reports
-    - Monitor score improvements
-    - Compare with previous scans
-    
-    **Step 5: Optimize Keywords**
-    - Review keyword opportunities
-    - See search volume and difficulty
-    - Get content suggestions for each keyword
-    """)
+    with col2:
+        tab1, tab2 = st.tabs(["🔐 Sign In", "✨ Sign Up"])
+        
+        with tab1:
+            st.markdown("### Welcome Back!")
+            email = st.text_input("📧 Email", key="login_email")
+            password = st.text_input("🔒 Password", type="password", key="login_password")
+            
+            if st.button("Sign In", key="login_btn", use_container_width=True):
+                if email and password:
+                    try:
+                        result = supabase.auth.sign_in_with_password({
+                            "email": email,
+                            "password": password
+                        })
+                        
+                        if result:
+                            st.session_state.user = result.user
+                            st.success("✅ Welcome back!")
+                            st.balloons()
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Login failed: {str(e)}")
+                else:
+                    st.warning("Please enter email and password")
+        
+        with tab2:
+            st.markdown("### Join Nexus SEO")
+            full_name = st.text_input("👤 Full Name", key="signup_name")
+            email = st.text_input("📧 Email", key="signup_email")
+            password = st.text_input("🔒 Password (min 6 characters)", type="password", key="signup_password")
+            
+            if st.button("Create Account", key="signup_btn", use_container_width=True):
+                if full_name and email and password:
+                    if len(password) < 6:
+                        st.error("Password must be at least 6 characters")
+                    else:
+                        try:
+                            result = supabase.auth.sign_up({
+                                "email": email,
+                                "password": password,
+                                "options": {
+                                    "data": {
+                                        "full_name": full_name
+                                    }
+                                }
+                            })
+                            
+                            if result:
+                                st.success("✅ Account created! Check your email to verify.")
+                                st.balloons()
+                        except Exception as e:
+                            st.error(f"❌ Signup failed: {str(e)}")
+                else:
+                    st.warning("Please fill in all fields")
 
-# Footer
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.markdown("---")
-
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
+def render_dashboard():
+    """Modern dashboard"""
+    
+    # Sidebar
+    with st.sidebar:
+        st.markdown("# 🎯 Nexus SEO")
+        st.markdown("---")
+        
+        user_email = st.session_state.user.email
+        st.markdown(f"### 👤 {user_email.split('@')[0]}")
+        st.caption(user_email)
+        
+        st.markdown("---")
+        
+        # Get user data
+        user_data = None
+        if service_supabase:
+            try:
+                user_id = st.session_state.user.id
+                profile = service_supabase.table('profiles').select('*').eq('id', user_id).execute()
+                if profile.data:
+                    user_data = profile.data[0]
+            except:
+                pass
+        
+        if user_data:
+            tier = user_data.get('tier', 'free').upper()
+            st.markdown(f"**{tier} Plan**")
+            
+            st.markdown("---")
+            
+            credits = user_data.get('credits_balance', 0)
+            scans_used = user_data.get('monthly_scans_used', 0)
+            scan_limit = user_data.get('monthly_scan_limit', 50)
+            
+            st.metric("💎 Credits", f"{credits:,}")
+            st.metric("📊 Scans", f"{scans_used}/{scan_limit}")
+            
+            progress = min(scans_used / scan_limit, 1.0) if scan_limit > 0 else 0
+            st.progress(progress)
+        
+        st.markdown("---")
+        
+        if st.button("🚪 Logout", use_container_width=True):
+            supabase.auth.sign_out()
+            st.session_state.user = None
+            st.rerun()
+    
+    # Main content
     st.markdown("""
-    <div style="text-align: center; color: #6b7280; padding: 2rem 0;">
-        <p style="font-size: 1.1rem;"><strong>Nexus SEO Intelligence</strong></p>
-        <p style="font-size: 0.9rem; opacity: 0.8;">Powered by Advanced AI Technology</p>
-        <p style="font-size: 0.85rem; opacity: 0.6;">© 2026 All rights reserved</p>
+    <div class="hero-section">
+        <h1 style="font-size: 2.5rem; margin: 0;">Welcome to Your SEO Command Center 🚀</h1>
+        <p style="font-size: 1.1rem; margin-top: 1rem; opacity: 0.9;">
+            Powered by AI • Real-time Analysis • Actionable Insights
+        </p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Quick Stats
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("🗄️ Database", "✅ Online")
+    with col2:
+        st.metric("💳 Payments", "✅ Active")
+    with col3:
+        st.metric("🤖 AI Engine", "✅ Ready")
+    with col4:
+        st.metric("📊 Status", "🟢 Live")
+    
+    st.markdown("---")
+    
+    # Quick Actions
+    st.markdown("## 🎯 Quick Actions")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown("### 🔍 Advanced Scanner")
+        st.caption("AI-powered deep analysis")
+        if st.button("Launch Scanner", key="scanner", use_container_width=True, type="primary"):
+            st.switch_page("pages/Advanced_Scanner.py")
+    
+    with col2:
+        st.markdown("### 📊 Scan Results")
+        st.caption("View detailed reports")
+        if st.button("View Results", key="results", use_container_width=True):
+            st.switch_page("pages/3_Scan_Results.py")
+    
+    with col3:
+        st.markdown("### 🤖 AI Insights")
+        st.caption("Smart recommendations")
+        if st.button("Get Insights", key="insights", use_container_width=True):
+            st.info("Run a scan first!")
+    
+    with col4:
+        st.markdown("### 💳 Billing")
+        st.caption("Manage subscription")
+        if st.button("View Plans", key="billing", use_container_width=True):
+            st.switch_page("pages/4_Billing.py")
+    
+    st.markdown("---")
+    
+    # Recent Activity
+    st.markdown("## 📈 Recent Activity")
+    
+    if service_supabase and user_data:
+        try:
+            user_id = st.session_state.user.id
+            recent_scans = service_supabase.table('seo_scans').select('*').eq('user_id', user_id).order('created_at', desc=True).limit(5).execute()
+            
+            if recent_scans.data and len(recent_scans.data) > 0:
+                for scan in recent_scans.data[:3]:
+                    score = scan.get('overall_score', 0)
+                    domain = scan.get('domain', 'Unknown')
+                    
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    
+                    with col1:
+                        st.markdown(f"**🌐 {domain}**")
+                    with col2:
+                        icon = "🟢" if score >= 80 else "🟡" if score >= 60 else "🔴"
+                        st.markdown(f"{icon} **{score}/100**")
+                    with col3:
+                        if st.button("View", key=f"view_{scan['id']}", use_container_width=True):
+                            st.session_state.current_scan = scan
+                            st.switch_page("pages/3_Scan_Results.py")
+            else:
+                st.info("🎯 **No scans yet!** Launch the Advanced Scanner to get started.")
+        except Exception as e:
+            st.info("🎯 **Ready to start!** Use the Advanced Scanner above.")
+    else:
+        st.info("🎯 **Welcome!** Launch the Advanced Scanner to analyze your first website.")
+    
+    st.markdown("---")
+    
+    # Features
+    st.markdown("## ✨ Platform Features")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>🔍 Advanced Scanner</h3>
+            <p>Deep technical analysis with 50+ SEO checkpoints</p>
+            <ul>
+                <li>Technical SEO audit</li>
+                <li>Content analysis</li>
+                <li>Performance metrics</li>
+                <li>Mobile optimization</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>🤖 AI Insights</h3>
+            <p>Smart recommendations powered by AI</p>
+            <ul>
+                <li>Automated analysis</li>
+                <li>Priority rankings</li>
+                <li>Action plans</li>
+                <li>Competitor intel</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div class="feature-card">
+            <h3>📊 Reports</h3>
+            <p>Professional reports ready to share</p>
+            <ul>
+                <li>PDF export</li>
+                <li>White-label ready</li>
+                <li>Email delivery</li>
+                <li>Custom branding</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()

@@ -8,3 +8,5 @@ plotly
 google-generativeai
 reportlab
 stripe
+fpdf
+FDPF2

@@ -1,11 +1,11 @@
 """
-NEXUS SEO INTELLIGENCE - Complete Modern App
-With Login, Dashboard, and Navigation
+NEXUS SEO INTELLIGENCE - Secure Production App
+Complete with authentication and profile management
 """
 
 import streamlit as st
 
-# Page config MUST be first - before ANY other imports
+# Page config MUST be first
 st.set_page_config(
     page_title="Nexus SEO Intelligence",
     page_icon="🎯",
@@ -13,7 +13,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Now import other modules
 import os
 from supabase import create_client
 
@@ -22,9 +21,7 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     
-    * {
-        font-family: 'Inter', sans-serif;
-    }
+    * { font-family: 'Inter', sans-serif; }
     
     .hero-section {
         background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe);
@@ -57,19 +54,6 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
-    
-    .feature-card {
-        background: white;
-        border-radius: 15px;
-        padding: 2rem;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        transition: transform 0.3s ease;
-    }
-    
-    .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -77,33 +61,26 @@ st.markdown("""
 @st.cache_resource
 def get_supabase_client():
     try:
-        supabase_url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
-        supabase_key = st.secrets.get("SUPABASE_KEY") or os.getenv("SUPABASE_KEY")
-    except:
-        from dotenv import load_dotenv
-        load_dotenv()
-        supabase_url = os.getenv('SUPABASE_URL')
-        supabase_key = os.getenv('SUPABASE_KEY')
-    
-    if not supabase_url or not supabase_key:
-        st.error("⚠️ Supabase credentials not configured")
+        url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
+        key = st.secrets.get("SUPABASE_KEY") or os.getenv("SUPABASE_KEY")
+        if not url or not key:
+            st.error("⚠️ Supabase credentials not configured")
+            st.stop()
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"Database connection error: {str(e)}")
         st.stop()
-    
-    return create_client(supabase_url, supabase_key)
 
 @st.cache_resource
 def get_service_client():
     try:
-        supabase_url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
-        service_key = st.secrets.get("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
+        key = st.secrets.get("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if key:
+            return create_client(url, key)
     except:
-        supabase_url = os.getenv('SUPABASE_URL')
-        service_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-    
-    if not service_key:
-        return None
-    
-    return create_client(supabase_url, service_key)
+        pass
+    return None
 
 supabase = get_supabase_client()
 service_supabase = get_service_client()
@@ -112,6 +89,38 @@ service_supabase = get_service_client()
 if 'user' not in st.session_state:
     st.session_state.user = None
 
+def ensure_user_profile(user_id, email):
+    """Ensure user profile exists, create if not"""
+    try:
+        client = service_supabase or supabase
+        
+        # Try to get existing profile
+        result = client.table('profiles').select('*').eq('id', user_id).execute()
+        
+        if not result.data:
+            # Create new profile
+            new_profile = {
+                'id': user_id,
+                'email': email,
+                'tier': 'demo',
+                'credits_balance': 1000,
+                'monthly_scans_used': 0,
+                'monthly_scan_limit': 50
+            }
+            client.table('profiles').insert(new_profile).execute()
+            return new_profile
+        
+        return result.data[0]
+    except Exception as e:
+        print(f"Profile creation error: {str(e)}")
+        # Return default profile
+        return {
+            'tier': 'demo',
+            'credits_balance': 1000,
+            'monthly_scans_used': 0,
+            'monthly_scan_limit': 50
+        }
+
 def main():
     if st.session_state.user is None:
         render_login()
@@ -119,16 +128,13 @@ def main():
         render_dashboard()
 
 def render_login():
-    """Modern login page"""
+    """Secure login page"""
     
     st.markdown("""
     <div class="hero-section">
         <h1 style="font-size: 3rem; margin: 0;">🎯 Nexus SEO Intelligence</h1>
         <p style="font-size: 1.3rem; margin-top: 1rem; opacity: 0.9;">
             AI-Powered SEO Analysis Platform
-        </p>
-        <p style="font-size: 1rem; margin-top: 0.5rem; opacity: 0.8;">
-            Analyze • Optimize • Dominate Search Rankings
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -151,13 +157,15 @@ def render_login():
                             "password": password
                         })
                         
-                        if result:
+                        if result and result.user:
                             st.session_state.user = result.user
+                            # Ensure profile exists
+                            ensure_user_profile(result.user.id, email)
                             st.success("✅ Welcome back!")
                             st.balloons()
                             st.rerun()
                     except Exception as e:
-                        st.error(f"❌ Login failed: {str(e)}")
+                        st.error(f"❌ Login failed: Invalid credentials")
                 else:
                     st.warning("Please enter email and password")
         
@@ -165,7 +173,7 @@ def render_login():
             st.markdown("### Join Nexus SEO")
             full_name = st.text_input("👤 Full Name", key="signup_name")
             email = st.text_input("📧 Email", key="signup_email")
-            password = st.text_input("🔒 Password (min 6 characters)", type="password", key="signup_password")
+            password = st.text_input("🔒 Password (min 6 chars)", type="password", key="signup_password")
             
             if st.button("Create Account", key="signup_btn", use_container_width=True):
                 if full_name and email and password:
@@ -183,7 +191,9 @@ def render_login():
                                 }
                             })
                             
-                            if result:
+                            if result and result.user:
+                                # Create profile immediately
+                                ensure_user_profile(result.user.id, email)
                                 st.success("✅ Account created! Check your email to verify.")
                                 st.balloons()
                         except Exception as e:
@@ -192,50 +202,42 @@ def render_login():
                     st.warning("Please fill in all fields")
 
 def render_dashboard():
-    """Modern dashboard"""
+    """Secure dashboard"""
+    
+    # Get user profile
+    user_id = st.session_state.user.id
+    user_email = st.session_state.user.email
+    user_data = ensure_user_profile(user_id, user_email)
     
     # Sidebar
     with st.sidebar:
         st.markdown("# 🎯 Nexus SEO")
         st.markdown("---")
-        
-        user_email = st.session_state.user.email
         st.markdown(f"### 👤 {user_email.split('@')[0]}")
         st.caption(user_email)
-        
         st.markdown("---")
         
-        # Get user data
-        user_data = None
-        if service_supabase:
-            try:
-                user_id = st.session_state.user.id
-                profile = service_supabase.table('profiles').select('*').eq('id', user_id).execute()
-                if profile.data:
-                    user_data = profile.data[0]
-            except:
-                pass
+        tier = user_data.get('tier', 'demo').upper()
+        st.markdown(f"**{tier} Plan**")
+        st.markdown("---")
         
-        if user_data:
-            tier = user_data.get('tier', 'free').upper()
-            st.markdown(f"**{tier} Plan**")
-            
-            st.markdown("---")
-            
-            credits = user_data.get('credits_balance', 0)
-            scans_used = user_data.get('monthly_scans_used', 0)
-            scan_limit = user_data.get('monthly_scan_limit', 50)
-            
-            st.metric("💎 Credits", f"{credits:,}")
-            st.metric("📊 Scans", f"{scans_used}/{scan_limit}")
-            
-            progress = min(scans_used / scan_limit, 1.0) if scan_limit > 0 else 0
-            st.progress(progress)
+        credits = user_data.get('credits_balance', 0)
+        scans_used = user_data.get('monthly_scans_used', 0)
+        scan_limit = user_data.get('monthly_scan_limit', 50)
+        
+        st.metric("💎 Credits", f"{credits:,}")
+        st.metric("📊 Scans", f"{scans_used}/{scan_limit}")
+        
+        progress = min(scans_used / scan_limit, 1.0) if scan_limit > 0 else 0
+        st.progress(progress)
         
         st.markdown("---")
         
         if st.button("🚪 Logout", use_container_width=True):
-            supabase.auth.sign_out()
+            try:
+                supabase.auth.sign_out()
+            except:
+                pass
             st.session_state.user = None
             st.rerun()
     
@@ -243,15 +245,14 @@ def render_dashboard():
     st.markdown("""
     <div class="hero-section">
         <h1 style="font-size: 2.5rem; margin: 0;">Welcome to Your SEO Command Center 🚀</h1>
-        <p style="font-size: 1.1rem; margin-top: 1rem; opacity: 0.9;">
-            Powered by AI • Real-time Analysis • Actionable Insights
+        <p style="font-size: 1.1rem; margin-top: 1rem;">
+            AI-Powered Analysis • Real-time Insights • Actionable Results
         </p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Quick Stats
+    # Stats
     col1, col2, col3, col4 = st.columns(4)
-    
     with col1:
         st.metric("🗄️ Database", "✅ Online")
     with col2:
@@ -269,27 +270,23 @@ def render_dashboard():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown("### 🔍 Advanced Scanner")
-        st.caption("AI-powered deep analysis")
-        if st.button("Launch Scanner", key="scanner", use_container_width=True, type="primary"):
+        st.markdown("### 🔍 Scanner")
+        if st.button("Launch", key="scanner", use_container_width=True, type="primary"):
             st.switch_page("pages/Advanced_Scanner.py")
     
     with col2:
-        st.markdown("### 📊 Scan Results")
-        st.caption("View detailed reports")
-        if st.button("View Results", key="results", use_container_width=True):
+        st.markdown("### 📊 Results")
+        if st.button("View", key="results", use_container_width=True):
             st.switch_page("pages/3_Scan_Results.py")
     
     with col3:
         st.markdown("### 🤖 AI Insights")
-        st.caption("Smart recommendations")
-        if st.button("Get Insights", key="insights", use_container_width=True):
+        if st.button("Analyze", key="insights", use_container_width=True):
             st.info("Run a scan first!")
     
     with col4:
         st.markdown("### 💳 Billing")
-        st.caption("Manage subscription")
-        if st.button("View Plans", key="billing", use_container_width=True):
+        if st.button("Plans", key="billing", use_container_width=True):
             st.switch_page("pages/4_Billing.py")
     
     st.markdown("---")
@@ -297,82 +294,29 @@ def render_dashboard():
     # Recent Activity
     st.markdown("## 📈 Recent Activity")
     
-    if service_supabase and user_data:
-        try:
-            user_id = st.session_state.user.id
-            recent_scans = service_supabase.table('seo_scans').select('*').eq('user_id', user_id).order('created_at', desc=True).limit(5).execute()
-            
-            if recent_scans.data and len(recent_scans.data) > 0:
-                for scan in recent_scans.data[:3]:
-                    score = scan.get('overall_score', 0)
-                    domain = scan.get('domain', 'Unknown')
-                    
-                    col1, col2, col3 = st.columns([3, 1, 1])
-                    
-                    with col1:
-                        st.markdown(f"**🌐 {domain}**")
-                    with col2:
-                        icon = "🟢" if score >= 80 else "🟡" if score >= 60 else "🔴"
-                        st.markdown(f"{icon} **{score}/100**")
-                    with col3:
-                        if st.button("View", key=f"view_{scan['id']}", use_container_width=True):
-                            st.session_state.current_scan = scan
-                            st.switch_page("pages/3_Scan_Results.py")
-            else:
-                st.info("🎯 **No scans yet!** Launch the Advanced Scanner to get started.")
-        except Exception as e:
-            st.info("🎯 **Ready to start!** Use the Advanced Scanner above.")
-    else:
-        st.info("🎯 **Welcome!** Launch the Advanced Scanner to analyze your first website.")
-    
-    st.markdown("---")
-    
-    # Features
-    st.markdown("## ✨ Platform Features")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-        <div class="feature-card">
-            <h3>🔍 Advanced Scanner</h3>
-            <p>Deep technical analysis with 50+ SEO checkpoints</p>
-            <ul>
-                <li>Technical SEO audit</li>
-                <li>Content analysis</li>
-                <li>Performance metrics</li>
-                <li>Mobile optimization</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div class="feature-card">
-            <h3>🤖 AI Insights</h3>
-            <p>Smart recommendations powered by AI</p>
-            <ul>
-                <li>Automated analysis</li>
-                <li>Priority rankings</li>
-                <li>Action plans</li>
-                <li>Competitor intel</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown("""
-        <div class="feature-card">
-            <h3>📊 Reports</h3>
-            <p>Professional reports ready to share</p>
-            <ul>
-                <li>PDF export</li>
-                <li>White-label ready</li>
-                <li>Email delivery</li>
-                <li>Custom branding</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+    try:
+        client = service_supabase or supabase
+        recent = client.table('seo_scans').select('*').eq('user_id', user_id).order('created_at', desc=True).limit(5).execute()
+        
+        if recent.data and len(recent.data) > 0:
+            for scan in recent.data[:3]:
+                score = scan.get('overall_score', 0)
+                domain = scan.get('domain', 'Unknown')
+                icon = "🟢" if score >= 80 else "🟡" if score >= 60 else "🔴"
+                
+                col1, col2, col3 = st.columns([3, 1, 1])
+                with col1:
+                    st.markdown(f"**🌐 {domain}**")
+                with col2:
+                    st.markdown(f"{icon} **{score}/100**")
+                with col3:
+                    if st.button("View", key=f"v_{scan['id']}", use_container_width=True):
+                        st.session_state.current_scan = scan
+                        st.switch_page("pages/3_Scan_Results.py")
+        else:
+            st.info("🎯 **No scans yet!** Launch the Scanner to get started.")
+    except:
+        st.info("🎯 **Welcome!** Use the Scanner to analyze your first website.")
 
 if __name__ == "__main__":
     main()
